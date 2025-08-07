@@ -21,6 +21,7 @@ jobs:
       uses: actions/setup-go@v4
       with:
         go-version: ${{ env.GO_VERSION }}
+        cache: false
     
     - name: Install PC/SC dependencies
       run: |
@@ -47,6 +48,7 @@ jobs:
       uses: actions/setup-go@v4
       with:
         go-version: ${{ env.GO_VERSION }}
+        cache: false
     
     - name: Install dependencies
       run: |
@@ -104,6 +106,9 @@ jobs:
     
     - name: Download artifacts
       uses: actions/download-artifact@v4
+      with:
+        name: cfs-spool-linux-amd64
+        path: .
     
     - name: Create Release
       uses: softprops/action-gh-release@v1
@@ -131,6 +136,6 @@ jobs:
           - Issues: https://github.com/robertocorreajr/cfs_spool/issues
           - Documentation: https://github.com/robertocorreajr/cfs_spool#readme
         files: |
-          **/cfs-spool-linux-amd64.tar.gz
+          cfs-spool-linux-amd64.tar.gz
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
