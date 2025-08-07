@@ -1,0 +1,30 @@
+# Binários compilados
+cfs-spool
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Arquivos de teste
+*.test
+
+# Arquivos de coverage
+*.out
+
+# Arquivos temporários do Go
+vendor/
+
+# Arquivos do sistema
+.DS_Store
+*.swp
+*.swo
+*~
+
+# IDEs
+.vscode/
+.idea/
+*.iml
+
+# Logs
+*.log
