@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CFS Spool - Interface Web</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        
+        .tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            background: transparent;
+            border: none;
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #6c757d;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            background: white;
+            color: #2c3e50;
+            border-bottom: 3px solid #667eea;
+        }
+        
+        .tab:hover {
+            background: #e9ecef;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .form-row .form-group {
+            flex: 1;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s;
+            width: 100%;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn.read {
+            background: linear-gradient(135deg, #28a745, #20c997);
+        }
+        
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+        }
+        
+        .result.success {
+            background: #d1edff;
+            border: 2px solid #0ea5e9;
+            color: #0c4a6e;
+        }
+        
+        .result.error {
+            background: #fecaca;
+            border: 2px solid #ef4444;
+            color: #991b1b;
+        }
+        
+        .tag-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .tag-field {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .tag-field strong {
+            display: block;
+            margin-bottom: 5px;
+            color: #2c3e50;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .length-custom {
+            display: none;
+            margin-top: 10px;
+        }
+        
+        .length-custom input {
+            margin-top: 5px;
+        }
+        
+        @media (max-width: 768px) {
+            .form-row {
+                flex-direction: column;
+            }
+            
+            .tabs {
+                flex-direction: column;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏷️ CFS Spool</h1>
+            <p>Leitor/Gravador de Tags RFID Creality</p>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('read')">📖 Ler Tag</button>
+            <button class="tab" onclick="switchTab('write')">✏️ Gravar Tag</button>
+        </div>
+        
+        <div class="content">
+            <!-- Tab de Leitura -->
+            <div id="read-tab" class="tab-content active">
+                <h2>📖 Ler Tag RFID</h2>
+                <p>Coloque a tag no leitor e clique no botão abaixo para ler as informações.</p>
+                
+                <div style="margin-top: 30px;">
+                    <button class="btn read" onclick="readTag()">🔍 Ler Tag</button>
+                </div>
+                
+                <div id="read-loading" class="loading">
+                    <div class="spinner"></div>
+                    <p>Lendo tag RFID...</p>
+                </div>
+                
+                <div id="read-result" class="result">
+                    <div id="tag-info" class="tag-info"></div>
+                </div>
+            </div>
+            
+            <!-- Tab de Escrita -->
+            <div id="write-tab" class="tab-content">
+                <h2>✏️ Gravar Tag RFID</h2>
+                <p>Preencha os dados abaixo e clique em gravar para programar a tag.</p>
+                
+                <form id="write-form" style="margin-top: 30px;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="batch">📦 Lote</label>
+                            <input type="text" id="batch" maxlength="3" placeholder="Ex: 1A5" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="date">📅 Data</label>
+                            <input type="date" id="date" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="supplier">🏭 Fornecedor</label>
+                            <select id="supplier" required>
+                                <option value="">Selecione...</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="material">🧪 Material</label>
+                            <select id="material" required>
+                                <option value="">Selecione...</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="color">🎨 Cor (Hex)</label>
+                            <input type="color" id="color-picker" onchange="updateColorHex()">
+                            <input type="text" id="color" placeholder="Ex: 0000FF0" maxlength="7" style="margin-top: 5px;" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="length">📏 Comprimento</label>
+                            <select id="length" onchange="toggleCustomLength()" required>
+                                <option value="">Selecione...</option>
+                            </select>
+                            <div id="length-custom" class="length-custom">
+                                <label for="length-grams">Peso em gramas:</label>
+                                <input type="number" id="length-grams" placeholder="Ex: 750" min="1" max="5000">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="serial">🔢 Serial</label>
+                            <input type="text" id="serial" placeholder="Ex: 000001" maxlength="6" required>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 30px;">
+                        <button type="submit" class="btn">💾 Gravar Tag</button>
+                    </div>
+                </form>
+                
+                <div id="write-loading" class="loading">
+                    <div class="spinner"></div>
+                    <p>Gravando tag RFID...</p>
+                </div>
+                
+                <div id="write-result" class="result"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let options = {};
+        
+        // Carregar opções ao inicializar
+        document.addEventListener('DOMContentLoaded', function() {
+            loadOptions();
+            setDefaultDate();
+        });
+        
+        // Alternar entre tabs
+        function switchTab(tabName) {
+            // Atualizar botões
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Atualizar conteúdo
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tabName + '-tab').classList.add('active');
+        }
+        
+        // Carregar opções dos dropdowns
+        async function loadOptions() {
+            try {
+                const response = await fetch('/api/options');
+                options = await response.json();
+                
+                populateSelect('supplier', options.vendors, 'code', 'name');
+                populateSelect('material', options.materials, 'code', 'name');
+                populateSelect('length', options.lengths, 'code', 'name');
+                
+            } catch (error) {
+                console.error('Erro ao carregar opções:', error);
+            }
+        }
+        
+        // Popular select
+        function populateSelect(elementId, items, valueField, textField) {
+            const select = document.getElementById(elementId);
+            items.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item[valueField];
+                option.textContent = item[textField];
+                select.appendChild(option);
+            });
+        }
+        
+        // Definir data padrão (hoje)
+        function setDefaultDate() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('date').value = today;
+        }
+        
+        // Atualizar cor hex baseado no picker
+        function updateColorHex() {
+            const colorPicker = document.getElementById('color-picker');
+            const colorHex = document.getElementById('color');
+            
+            // Converter #RRGGBB para RRGGBB0 (formato CFS)
+            let hex = colorPicker.value.substring(1) + '0';
+            colorHex.value = hex.toUpperCase();
+        }
+        
+        // Mostrar/ocultar campo de comprimento customizado
+        function toggleCustomLength() {
+            const lengthSelect = document.getElementById('length');
+            const customDiv = document.getElementById('length-custom');
+            
+            if (lengthSelect.value === 'CUSTOM') {
+                customDiv.style.display = 'block';
+            } else {
+                customDiv.style.display = 'none';
+            }
+        }
+        
+        // Ler tag
+        async function readTag() {
+            const loading = document.getElementById('read-loading');
+            const result = document.getElementById('read-result');
+            const tagInfo = document.getElementById('tag-info');
+            
+            loading.style.display = 'block';
+            result.style.display = 'none';
+            
+            try {
+                const response = await fetch('/api/read');
+                const data = await response.json();
+                
+                loading.style.display = 'none';
+                result.style.display = 'block';
+                
+                if (data.success) {
+                    result.className = 'result success';
+                    tagInfo.innerHTML = `
+                        <div class="tag-field">
+                            <strong>🆔 UID:</strong>
+                            ${data.data.uid}
+                        </div>
+                        <div class="tag-field">
+                            <strong>📦 Lote:</strong>
+                            ${data.data.batch}
+                        </div>
+                        <div class="tag-field">
+                            <strong>📅 Data:</strong>
+                            ${data.data.date}
+                        </div>
+                        <div class="tag-field">
+                            <strong>🏭 Fornecedor:</strong>
+                            ${data.data.supplier}
+                        </div>
+                        <div class="tag-field">
+                            <strong>🧪 Material:</strong>
+                            ${data.data.material}
+                        </div>
+                        <div class="tag-field">
+                            <strong>🎨 Cor:</strong>
+                            ${data.data.color}
+                        </div>
+                        <div class="tag-field">
+                            <strong>📏 Comprimento:</strong>
+                            ${data.data.length}
+                        </div>
+                        <div class="tag-field">
+                            <strong>🔢 Serial:</strong>
+                            ${data.data.serial}
+                        </div>
+                    `;
+                } else {
+                    result.className = 'result error';
+                    tagInfo.innerHTML = `<strong>❌ Erro:</strong> ${data.error}`;
+                }
+                
+            } catch (error) {
+                loading.style.display = 'none';
+                result.style.display = 'block';
+                result.className = 'result error';
+                tagInfo.innerHTML = `<strong>❌ Erro:</strong> Falha na comunicação com o servidor`;
+            }
+        }
+        
+        // Gravar tag
+        document.getElementById('write-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const loading = document.getElementById('write-loading');
+            const result = document.getElementById('write-result');
+            
+            loading.style.display = 'block';
+            result.style.display = 'none';
+            
+            // Preparar dados
+            const formData = {
+                batch: document.getElementById('batch').value,
+                date: document.getElementById('date').value,
+                supplier: document.getElementById('supplier').value,
+                material: document.getElementById('material').value,
+                color: document.getElementById('color').value,
+                length: getLength(),
+                serial: document.getElementById('serial').value
+            };
+            
+            try {
+                const response = await fetch('/api/write', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                loading.style.display = 'none';
+                result.style.display = 'block';
+                
+                if (data.success) {
+                    result.className = 'result success';
+                    result.innerHTML = `<strong>✅ Sucesso:</strong> ${data.message}`;
+                } else {
+                    result.className = 'result error';
+                    result.innerHTML = `<strong>❌ Erro:</strong> ${data.error}`;
+                }
+                
+            } catch (error) {
+                loading.style.display = 'none';
+                result.style.display = 'block';
+                result.className = 'result error';
+                result.innerHTML = `<strong>❌ Erro:</strong> Falha na comunicação com o servidor`;
+            }
+        });
+        
+        // Obter valor do comprimento (pode ser seletor ou customizado)
+        function getLength() {
+            const lengthSelect = document.getElementById('length');
+            
+            if (lengthSelect.value === 'CUSTOM') {
+                const grams = document.getElementById('length-grams').value;
+                return grams; // Será convertido no backend
+            }
+            
+            return lengthSelect.value;
+        }
+    </script>
+</body>
+</html>

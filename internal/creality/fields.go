@@ -113,9 +113,13 @@ func (f Fields) FormatLength() string {
 // GetMaterialName retorna o nome do material baseado no código
 func (f Fields) GetMaterialName() string {
 	materials := map[string]string{
-		"00003": "PLA Genérico",
-		"00004": "ABS Genérico", 
-		"00007": "ASA Genérico",
+		"00001": "Generic PLA",
+		"00002": "Generic PLA-Silk",
+		"00003": "Generic PETG",
+		"00004": "Generic ABS",
+		"00005": "Generic TPU",
+		"00006": "Generic PLA-CF",
+		"00007": "Generic ASA",
 		"00008": "PA Genérico",
 		"00009": "PA-CF Genérico",
 		"00010": "BVOH Genérico",
@@ -126,6 +130,7 @@ func (f Fields) GetMaterialName() string {
 		"00016": "PAHT-CF Genérico",
 		"00020": "PET Genérico",
 		"00021": "PC Genérico",
+		"01001": "CR-PLA (padrão)",
 		"04001": "CR-PLA",
 		"05001": "CR-Silk",
 		"06001": "CR-PETG",
@@ -142,12 +147,25 @@ func (f Fields) GetMaterialName() string {
 		"17001": "CR-Wood",
 		"18001": "HPUltraPLA",
 		"19001": "HP-ASA",
-		"01001": "CR-PLA (padrão)",
 	}
 	
 	name := materials[f.Material]
 	if name == "" {
 		return f.Material + " (desconhecido)"
+	}
+	return name
+}
+
+// GetSupplierName retorna o nome do fornecedor baseado no código
+func (f Fields) GetSupplierName() string {
+	suppliers := map[string]string{
+		"1B3D": "Creality",
+		"FFFF": "Genérico",
+	}
+	
+	name := suppliers[f.Supplier]
+	if name == "" {
+		return f.Supplier + " (desconhecido)"
 	}
 	return name
 }
