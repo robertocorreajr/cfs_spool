@@ -1,0 +1,253 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  GO_VERSION: '1.21'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+    
+    - name: Install PC/SC dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libpcsclite-dev
+    
+    - name: Run tests
+      run: go test -v ./...
+    
+    - name: Build test
+      run: |
+        go build -v ./cmd/cfs-spool
+        go build -v ./cmd/web-server
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    strategy:
+      matrix:
+        include:
+          # Windows
+          - os: windows
+            arch: amd64
+            extension: .exe
+            goos: windows
+            goarch: amd64
+          - os: windows
+            arch: arm64
+            extension: .exe
+            goos: windows
+            goarch: arm64
+          
+          # Linux
+          - os: linux
+            arch: amd64
+            extension: ""
+            goos: linux
+            goarch: amd64
+          - os: linux
+            arch: arm64
+            extension: ""
+            goos: linux
+            goarch: arm64
+          
+          # macOS
+          - os: darwin
+            arch: amd64
+            extension: ""
+            goos: darwin
+            goarch: amd64
+          - os: darwin
+            arch: arm64
+            extension: ""
+            goos: darwin
+            goarch: arm64
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+    
+    - name: Install cross-compilation dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libpcsclite-dev gcc-multilib
+        
+        # Install mingw for Windows cross-compilation
+        if [ "${{ matrix.goos }}" = "windows" ]; then
+          sudo apt-get install -y gcc-mingw-w64
+        fi
+    
+    - name: Build CLI
+      env:
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
+        CGO_ENABLED: 1
+      run: |
+        # Set cross-compilation environment
+        if [ "${{ matrix.goos }}" = "windows" ]; then
+          if [ "${{ matrix.goarch }}" = "amd64" ]; then
+            export CC=x86_64-w64-mingw32-gcc
+          else
+            export CC=aarch64-w64-mingw32-gcc
+          fi
+        fi
+        
+        # Build CLI
+        go build -ldflags "-s -w -X main.version=${{ github.ref_name }}" \
+          -o cfs-spool-cli-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.extension }} \
+          ./cmd/cfs-spool
+        
+        # Build Web Server  
+        go build -ldflags "-s -w -X main.version=${{ github.ref_name }}" \
+          -o cfs-spool-web-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.extension }} \
+          ./cmd/web-server
+    
+    - name: Package release
+      run: |
+        # Create release directory
+        mkdir -p release/cfs-spool-${{ matrix.os }}-${{ matrix.arch }}
+        
+        # Copy binaries
+        cp cfs-spool-cli-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.extension }} release/cfs-spool-${{ matrix.os }}-${{ matrix.arch }}/
+        cp cfs-spool-web-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.extension }} release/cfs-spool-${{ matrix.os }}-${{ matrix.arch }}/
+        
+        # Copy web files
+        cp -r web release/cfs-spool-${{ matrix.os }}-${{ matrix.arch }}/
+        
+        # Copy documentation
+        cp README.md release/cfs-spool-${{ matrix.os }}-${{ matrix.arch }}/
+        
+        # Create install script for each platform
+        if [ "${{ matrix.goos }}" = "windows" ]; then
+          cat > release/cfs-spool-${{ matrix.os }}-${{ matrix.arch }}/install.bat << 'EOF'
+        @echo off
+        echo Installing CFS Spool...
+        echo.
+        echo 1. Make sure you have a PC/SC compatible RFID reader connected
+        echo 2. Run cfs-spool-web-${{ matrix.os }}-${{ matrix.arch }}.exe to start the web interface
+        echo 3. Open http://localhost:8080 in your browser
+        echo.
+        echo For CLI usage: cfs-spool-cli-${{ matrix.os }}-${{ matrix.arch }}.exe read-tag
+        pause
+        EOF
+        else
+          cat > release/cfs-spool-${{ matrix.os }}-${{ matrix.arch }}/install.sh << 'EOF'
+        #!/bin/bash
+        echo "Installing CFS Spool..."
+        echo
+        echo "1. Make sure you have PC/SC lite installed:"
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+          echo "   brew install pcsc-lite"
+        else
+          echo "   sudo apt-get install pcscd pcsc-tools libpcsclite1"
+        fi
+        echo "2. Make sure your RFID reader is connected"
+        echo "3. Run ./cfs-spool-web-${{ matrix.os }}-${{ matrix.arch }} to start the web interface"
+        echo "4. Open http://localhost:8080 in your browser"
+        echo
+        echo "For CLI usage: ./cfs-spool-cli-${{ matrix.os }}-${{ matrix.arch }} read-tag"
+        EOF
+          chmod +x release/cfs-spool-${{ matrix.os }}-${{ matrix.arch }}/install.sh
+          chmod +x release/cfs-spool-${{ matrix.os }}-${{ matrix.arch }}/cfs-spool-*
+        fi
+        
+        # Create archive
+        cd release
+        if [ "${{ matrix.goos }}" = "windows" ]; then
+          zip -r ../cfs-spool-${{ matrix.os }}-${{ matrix.arch }}.zip cfs-spool-${{ matrix.os }}-${{ matrix.arch }}/
+        else
+          tar -czf ../cfs-spool-${{ matrix.os }}-${{ matrix.arch }}.tar.gz cfs-spool-${{ matrix.os }}-${{ matrix.arch }}/
+        fi
+    
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: cfs-spool-${{ matrix.os }}-${{ matrix.arch }}
+        path: |
+          cfs-spool-${{ matrix.os }}-${{ matrix.arch }}.zip
+          cfs-spool-${{ matrix.os }}-${{ matrix.arch }}.tar.gz
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+    
+    - name: Display structure of downloaded files
+      run: ls -la
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+        files: |
+          **/*.zip
+          **/*.tar.gz
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  docker:
+    needs: test
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ghcr.io/${{ github.repository }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=tag
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        platforms: linux/amd64,linux/arm64
