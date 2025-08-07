@@ -103,6 +103,8 @@ func (f Fields) FormatLength() string {
 		return "330cm (1kg de filamento)"
 	case "0165":
 		return "165cm (500g de filamento)"
+	case "0083":
+		return "83cm (250g de filamento)"
 	default:
 		return f.Length + "cm"
 	}

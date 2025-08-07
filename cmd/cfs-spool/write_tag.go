@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/robertocorreajr/cfs_spool/internal/creality"
 	"github.com/robertocorreajr/cfs_spool/internal/rfid"
@@ -211,28 +212,87 @@ func cmdReadTag(args []string) {
 	fmt.Println("╚══════════════════════════════════════════╝")
 }
 
-// cmdWriteTag grava os dados (por enquanto só imprime o que faria)
+// cmdWriteTag grava os dados na tag RFID
 func cmdWriteTag(args []string) {
 	fs := flag.NewFlagSet("write-tag", flag.ExitOnError)
 
 	// campos ASCII obrigatórios
 	var batch, date, supplier, material, color, length, serial, reserve string
-	fs.StringVar(&batch, "batch", "", "Batch (3)")
-	fs.StringVar(&date, "date", "", "Date (5)")
-	fs.StringVar(&supplier, "supplier", "", "Supplier (4)")
-	fs.StringVar(&material, "material", "", "Material (5)")
-	fs.StringVar(&color, "color", "", "Color (7)")
-	fs.StringVar(&length, "length", "", "Length (4)")
-	fs.StringVar(&serial, "serial", "", "Serial (6)")
-	fs.StringVar(&reserve, "reserve", "", "Reserve (14)")
+	fs.StringVar(&batch, "batch", "", "Batch (3 chars): Exemplo: 1A5")
+	fs.StringVar(&date, "date", "", "Date (5 chars): Formato YYMDD, exemplo: 24120 para Janeiro 2024")  
+	fs.StringVar(&supplier, "supplier", "", "Supplier (4 chars): Exemplo: 1B3D")
+	fs.StringVar(&material, "material", "", "Material (5 chars): Exemplo: 04001 para CR-PLA")
+	fs.StringVar(&color, "color", "", "Color (7 chars): Exemplo: 077BB41 para verde")
+	fs.StringVar(&length, "length", "", "Length (4 chars): Exemplo: 0330 para 330cm")
+	fs.StringVar(&serial, "serial", "", "Serial (6 chars): Exemplo: 000001")
+	fs.StringVar(&reserve, "reserve", "00000000000000", "Reserve (14 chars): Padrão são zeros")
 
-	// opções da key atual
+	// opções da key atual (key que está na tag agora)
 	var keyType, currentKey string
-	fs.StringVar(&keyType, "type", "B", "A|B da key atual (default B)")
-	fs.StringVar(&currentKey, "currentkey", "FFFFFFFFFFFF", "Key atual (12-hex)")
+	var newKey, newKeyType string
+	var debug, verify bool
+	fs.StringVar(&keyType, "current-key-type", "A", "Tipo da key atual: A ou B")
+	fs.StringVar(&currentKey, "current-key", "", "Key atual da tag (12-hex). Se vazio, tenta derivar do UID")
+	fs.StringVar(&newKeyType, "new-key-type", "", "Tipo da nova key (A ou B). Se vazio, mantém a atual")
+	fs.StringVar(&newKey, "new-key", "", "Nova key (12-hex). Se vazio, mantém a atual")
+	fs.BoolVar(&debug, "debug", false, "Mostrar informações de debug")
+	fs.BoolVar(&verify, "verify", true, "Verificar escrita lendo os blocos novamente")
 
 	_ = fs.Parse(args)
 
+	// Validar campos obrigatórios
+	if batch == "" || date == "" || supplier == "" || material == "" || 
+		color == "" || length == "" || serial == "" {
+		fmt.Println("❌ Erro: Todos os campos são obrigatórios!")
+		fmt.Println("\nExemplo de uso:")
+		fmt.Println("./cfs-spool write-tag \\")
+		fmt.Println("  -batch=1A5 \\")
+		fmt.Println("  -date=24120 \\")  
+		fmt.Println("  -supplier=1B3D \\")
+		fmt.Println("  -material=04001 \\")
+		fmt.Println("  -color=077BB41 \\")
+		fmt.Println("  -length=0330 \\")
+		fmt.Println("  -serial=000001")
+		return
+	}
+
+	fmt.Println("╔══════════════════════════════════════════╗")
+	fmt.Println("║         GRAVADOR DE TAG CREALITY        ║")
+	fmt.Println("╚══════════════════════════════════════════╝")
+
+	// 1. Conectar ao leitor
+	rdr, err := rfid.Open()
+	if err != nil {
+		fmt.Printf("❌ Erro ao conectar leitor: %v\n", err)
+		return
+	}
+	defer rdr.Close()
+
+	// 2. Ler UID
+	uid, err := rdr.UID()
+	if err != nil {
+		fmt.Printf("❌ Erro ao ler UID: %v\n", err)
+		return
+	}
+	fmt.Printf("🆔 UID da tag: %s\n", uid)
+
+	// 3. Determinar key atual
+	var useKey string
+	if currentKey != "" {
+		useKey = strings.ToUpper(currentKey)
+		fmt.Printf("🔑 Usando key fornecida: %s\n", useKey)
+	} else {
+		// Derivar key do UID
+		derivedKey, err := creality.DeriveS1KeyFromUID(uid)
+		if err != nil {
+			fmt.Printf("❌ Erro ao derivar key do UID: %v\n", err)
+			return
+		}
+		useKey = derivedKey
+		fmt.Printf("🔑 Key derivada do UID: %s\n", useKey)
+	}
+
+	// 4. Criar estrutura de campos
 	fields := creality.Fields{
 		Batch:    batch,
 		Date:     date,
@@ -243,11 +303,136 @@ func cmdWriteTag(args []string) {
 		Serial:   serial,
 		Reserve:  reserve,
 	}
-	payload, err := fields.ASCIIConcat()
-	dieIf(err)
 
-	fmt.Println("≡ (mock) programação de tag ≡")
-	fmt.Printf("KeyType=%s  CurrentKey=%s\n", keyType, currentKey)
-	fmt.Printf("ASCII payload: %s\n", payload)
-	fmt.Println(">> TODO: abrir leitor, gravar blocos 4-7, validar leitura")
+	// 5. Validar tamanhos dos campos
+	payload, err := fields.ASCIIConcat()
+	if err != nil {
+		fmt.Printf("❌ Erro na validação dos campos: %v\n", err)
+		fmt.Println("\n📋 Tamanhos corretos:")
+		fmt.Println("  • Batch: 3 chars")
+		fmt.Println("  • Date: 5 chars (YYMDD)")  
+		fmt.Println("  • Supplier: 4 chars")
+		fmt.Println("  • Material: 5 chars")
+		fmt.Println("  • Color: 7 chars")
+		fmt.Println("  • Length: 4 chars")
+		fmt.Println("  • Serial: 6 chars")
+		fmt.Println("  • Reserve: 14 chars")
+		return
+	}
+
+	if debug {
+		fmt.Printf("\n📋 Payload ASCII (48 bytes): %s\n", payload)
+	}
+
+	// 6. Criptografar dados
+	fmt.Println("🔐 Criptografando dados...")
+	b4, b5, b6, err := creality.EncryptPayloadToBlocks(payload)
+	if err != nil {
+		fmt.Printf("❌ Erro na criptografia: %v\n", err)
+		return
+	}
+
+	if debug {
+		fmt.Printf("📊 Bloco 4: %s\n", b4)
+		fmt.Printf("📊 Bloco 5: %s\n", b5)
+		fmt.Printf("📊 Bloco 6: %s\n", b6)
+	}
+
+	// 7. Mostrar prévia dos dados  
+	fmt.Println("\n╔══════════════════════════════════════════╗")
+	fmt.Println("║          PRÉVIA DOS DADOS                ║")
+	fmt.Println("╚══════════════════════════════════════════╝")
+	fmt.Printf("📦 Lote:        %s\n", fields.Batch)
+	fmt.Printf("📅 Data:        %s\n", fields.FormatDate())
+	fmt.Printf("🏭 Fornecedor:  %s\n", fields.Supplier)
+	fmt.Printf("🧪 Material:    %s\n", fields.GetMaterialName())
+	fmt.Printf("🎨 Cor:         %s\n", fields.FormatColor())
+	fmt.Printf("📏 Comprimento: %s\n", fields.FormatLength())
+	fmt.Printf("🔢 Serial:      %s\n", fields.Serial)
+
+	// 8. Confirmação do usuário
+	fmt.Println("\n⚠️  ATENÇÃO: Esta operação irá SOBRESCREVER os dados da tag!")
+	fmt.Print("Deseja continuar? (S/n): ")
+	var confirm string
+	fmt.Scanln(&confirm)
+	if confirm != "" && strings.ToLower(confirm) != "s" && strings.ToLower(confirm) != "sim" {
+		fmt.Println("❌ Operação cancelada pelo usuário.")
+		return
+	}
+
+	// 9. Escrever blocos usando método JavaScript
+	fmt.Println("\n🔧 Gravando dados na tag...")
+	
+	// Preparar lista de blocos
+	blocksToWrite := []string{b4, b5, b6}
+	
+	// Escrever como tag não criptografada primeiro (chave padrão)
+	err = rdr.WriteTagCFS(uid, blocksToWrite, false)
+	if err != nil {
+		fmt.Printf("❌ Erro na escrita: %v\n", err)
+		fmt.Println("\n💡 Dicas:")
+		fmt.Println("  • Verifique se a tag está corretamente posicionada")
+		fmt.Println("  • Confirme se é uma tag MIFARE Classic")
+		fmt.Println("  • Tente com uma tag nova/zerada")
+		return
+	}
+
+	fmt.Println("✅ Dados gravados com sucesso!")
+
+	// 10. Verificação (se habilitada)
+	if verify {
+		fmt.Println("\n🔍 Verificando escrita...")
+		
+		// Aguardar um pouco para a tag processar
+		time.Sleep(time.Millisecond * 100)
+		
+		// Tentar ler com chave padrão
+		success := true
+		for i, expectedBlock := range blocksToWrite {
+			block := byte(4 + i)
+			readData, err := rdr.TryReadBlock(block, rfid.KeyTypeA, "FFFFFFFFFFFF")
+			if err != nil {
+				fmt.Printf("❌ Verificação falhou no bloco %d: %v\n", block, err)
+				success = false
+			} else if strings.EqualFold(readData, expectedBlock) {
+				if debug {
+					fmt.Printf("✅ Bloco %d verificado\n", block)
+				}
+			} else {
+				fmt.Printf("❌ Dados não conferem no bloco %d!\n", block)
+				fmt.Printf("    Esperado: %s\n", expectedBlock)
+				fmt.Printf("    Lido:     %s\n", readData)
+				success = false
+			}
+		}
+		
+		if success {
+			fmt.Println("✅ Verificação: Todos os dados foram gravados corretamente!")
+		} else {
+			fmt.Println("⚠️  Alguns blocos podem não ter sido gravados corretamente.")
+		}
+	}
+
+	// 11. Atualizar keys se solicitado  
+	if newKey != "" {
+		fmt.Println("\n🔑 Atualizando keys de acesso...")
+		
+		var newKeyTypeByte byte = rfid.KeyTypeA // Por padrão usa tipo A
+		if newKeyType != "" {
+			if strings.ToUpper(newKeyType) == "B" {
+				newKeyTypeByte = rfid.KeyTypeB
+			} else {
+				newKeyTypeByte = rfid.KeyTypeA
+			}
+		}
+		
+		// TODO: Implementar escrita no bloco 7 (trailer do setor)
+		// Bloco 7 contém: KeyA(6) + AccessBits(3) + GPB(1) + KeyB(6)
+		fmt.Printf("⚠️  Atualização de keys ainda não implementada\n")
+		fmt.Printf("    Nova key seria: %s (tipo %s)\n", newKey, string(rune(newKeyTypeByte)))
+	}
+
+	fmt.Println("\n╔══════════════════════════════════════════╗")
+	fmt.Println("║           GRAVAÇÃO CONCLUÍDA             ║")
+	fmt.Println("╚══════════════════════════════════════════╝")
 }
