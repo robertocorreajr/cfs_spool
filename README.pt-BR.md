@@ -128,11 +128,11 @@ go build -o cfs-spool-cli ./cmd/cfs-spool
 ### 🛒 Hardware Recomendado (Links de Afiliados)
 
 #### AliExpress (Internacional)
-- **🏷️ [Leitor RFID ACR122U](https://s.click.aliexpress.com/e/_ok8qAl9){:target="_blank"}** - Leitor usado no desenvolvimento (compatibilidade garantida)
-- **📇 [Etiquetas MIFARE Classic 1K](https://s.click.aliexpress.com/e/_oBPVnEb){:target="_blank"}** - Tags compatíveis testadas no projeto
+- **🏷️ [Leitor RFID ACR122U](https://s.click.aliexpress.com/e/_ok8qAl9)** – Leitor usado no desenvolvimento (compatibilidade garantida)
+- **📇 [Etiquetas MIFARE Classic 1K](https://s.click.aliexpress.com/e/_oBPVnEb)** – Tags compatíveis testadas no projeto
 
 #### Mercado Livre (Brasil)
-- **🏷️ [Leitor e Gravador RFID](https://mercadolivre.com/sec/2QgqvkG){:target="_blank"}** - Opção nacional para compra do leitor RFID
+- **🏷️ [Leitor e Gravador RFID](https://mercadolivre.com/sec/2QgqvkG)** – Opção nacional para compra do leitor RFID
 
 ### Leitores RFID Testados
 - **ACR122U** ✅ (recomendado)
