@@ -394,7 +394,7 @@ jobs:
         
         !macro VerifyUserIsAdmin
         UserInfo::GetAccountType
-        pop $0
+        Pop $0
         ${If} $0 != "admin"
             messageBox MB_ICONSTOP "Administrator rights required!"
             setErrorLevel 740
