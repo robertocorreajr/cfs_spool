@@ -1,51 +1,108 @@
 # CFS Spool - Leitor/Gravador de Tags RFID Creality
 
-🏷️ **Ferramenta para leitura e escrita de tags RFID do sistema Creality File System (CFS)**
+🏷️ **Sistema completo para leitura e gravação de tags RFID do Creality File System (CFS)**
 
 ## 📋 Descrição
 
-O CFS Spool é uma ferramenta em linha de comando desenvolvida em Go para interagir com tags RFID MIFARE Classic utilizadas no sistema de filamentos da Creality. A ferramenta permite ler informações de bobinas de filamento como material, cor, lote, data de fabricação e outros metadados armazenados de forma criptografada nas tags.
+O CFS Spool é uma aplicação completa desenvolvida em Go que oferece tanto interface de linha de comando quanto interface web para interagir com tags RFID MIFARE Classic utilizadas no sistema de filamentos da Creality. A ferramenta permite ler e gravar informações de bobinas de filamento como material, cor, lote, data de fabricação e outros metadados armazenados de forma criptografada nas tags.
 
 ## ✨ Funcionalidades
 
+### 🖥️ Interface Web (Principal)
+- 🎨 **Seletor visual de cores**: Paleta de 35 cores predefinidas com preview em tempo real
+- 🧠 **Lógica inteligente**: Auto-seleção de fornecedor baseado no material escolhido
+- 📝 **Preenchimento automático**: Campos opcionais com padding automático
+- 📖 **Leitura visual**: Preview das cores lidas das tags existentes
+- 🔄 **Interface responsiva**: Funciona em desktop e mobile
+
+### 📟 CLI (Linha de Comando)
 - 📖 **Leitura de tags CFS**: Decodifica informações completas do filamento
-- 🔐 **Descriptografia AES-ECB**: Suporte ao sistema de criptografia Creality
-- 🎨 **Interface amigável**: Apresentação clara das informações com emojis
+- ✏️ **Gravação de tags**: Programa novas tags com dados customizados
+- 🔐 **Descriptografia AES-ECB**: Suporte completo ao sistema de criptografia Creality
 - 🔧 **Modo debug**: Exibição de dados técnicos para desenvolvimento
 - 🔄 **Autenticação robusta**: Múltiplos métodos de fallback para leitura
 
+### 🛠️ Recursos Avançados
+- 🎯 **Derivação de chaves**: Algoritmo completo baseado no UID da tag
+- 🔒 **Compatibilidade**: Funciona com tags novas (FFFFFFFFFFFF) e usadas (chave derivada)
+- 🧪 **Ferramentas de diagnóstico**: Suite completa para troubleshooting
+- 📦 **Instaladores nativos**: DMG para macOS, AppImage para Linux, executável para Windows
+
 ## 🚀 Instalação
 
-### Pré-requisitos
+### 📥 Downloads Prontos (Recomendado)
+
+Baixe a versão mais recente dos instaladores nativos:
+
+**[⬇️ Releases - GitHub](https://github.com/robertocorreajr/cfs_spool/releases/latest)**
+
+- 🍎 **macOS**: `CFS-Spool-macOS.dmg` (instalador drag-and-drop)
+- 🐧 **Linux**: `CFS-Spool-Linux.AppImage` (portável)
+- 🪟 **Windows**: `CFS-Spool-Windows.exe` (instalador)
+
+### 🛠️ Compilação Manual
+
+#### Pré-requisitos
 
 - **Go 1.21+**
 - **Leitor RFID compatível** (testado com ACR122U)
-- **PC/SC Smart Card Daemon** (no macOS já vem instalado)
+- **PC/SC Smart Card Daemon** 
+  - macOS: já incluso
+  - Linux: `sudo apt install pcscd libpcsclite-dev`
+  - Windows: driver do leitor RFID
 
-### Compilação
+#### Compilação
 
 ```bash
 git clone https://github.com/robertocorreajr/cfs_spool.git
 cd cfs_spool
-go build -o cfs-spool ./cmd/cfs-spool
-```
 
-### Execução direta do Git
+# Interface Web (principal)
+go build -o cfs-spool-web ./cmd/app
 
-```bash
-go run github.com/robertocorreajr/cfs_spool/cmd/cfs-spool@latest read-tag
+# CLI tradicional
+go build -o cfs-spool-cli ./cmd/cfs-spool
 ```
 
 ## 📱 Uso
 
-### Leitura de Tags
+### 🖥️ Interface Web (Recomendado)
+
+1. **Executar aplicação**:
+   ```bash
+   ./cfs-spool-web
+   # ou no Windows: CFS-Spool.exe
+   ```
+
+2. **Acessar interface**: Navegador abre automaticamente em `http://localhost:8080`
+
+3. **Usar interface**:
+   - **Aba "Ler Tag"**: Coloque tag no leitor e clique "Ler Tag"
+   - **Aba "Gravar Tag"**: Preencha dados e clique "Gravar Tag"
+
+#### 🎨 Recursos da Interface Web
+
+- **Paleta de cores**: 35 cores predefinidas com preview visual
+- **Preenchimento inteligente**: 
+  - Lote vazio → `000`
+  - Serial vazio → `000001`
+  - Auto-padding com zeros à esquerda
+- **Lógica inteligente**:
+  - Material Generic → Fornecedor Generic (automático)
+  - Material Creality → Fornecedor 1B3D (automático)
+  - Filtragem de materiais por fornecedor
+
+### 📟 Interface CLI
 
 ```bash
 # Leitura básica
-./cfs-spool read-tag
+./cfs-spool-cli read-tag
 
 # Modo debug (dados técnicos)
-./cfs-spool read-tag -debug
+./cfs-spool-cli read-tag -debug
+
+# Gravação de tag
+./cfs-spool-cli write-tag -batch "1A5" -material "04001" -color "FF40130"
 ```
 
 ### Exemplo de Saída
@@ -65,6 +122,11 @@ go run github.com/robertocorreajr/cfs_spool/cmd/cfs-spool@latest read-tag
 
 ## 🛠️ Hardware Suportado
 
+### 🛒 Hardware Recomendado (Links de Afiliados)
+
+- **🏷️ [Leitor RFID ACR122U](https://s.click.aliexpress.com/e/_ok8qAl9)** - Leitor usado no desenvolvimento (compatibilidade garantida)
+- **📇 [Etiquetas MIFARE Classic 1K](https://s.click.aliexpress.com/e/_oBPVnEb)** - Tags compatíveis testadas no projeto
+
 ### Leitores RFID Testados
 - **ACR122U** ✅ (recomendado)
 - **Outros leitores PC/SC** (compatibilidade não garantida)
@@ -74,29 +136,70 @@ go run github.com/robertocorreajr/cfs_spool/cmd/cfs-spool@latest read-tag
 - **MIFARE Classic 4K** ✅
 - **Tags Creality CFS** ✅
 
-## 🔧 Desenvolvimento
+### 🔧 Desenvolvimento
 
 ### Estrutura do Projeto
 
 ```
 cfs-spool/
-├── cmd/cfs-spool/          # Ponto de entrada da aplicação
-│   ├── main.go             # CLI principal
-│   └── write_tag.go        # Comandos de leitura/escrita
+├── cmd/
+│   ├── app/                # 🖥️ Interface Web (principal)
+│   │   └── main.go         # Servidor web com API REST
+│   ├── cfs-spool/          # 📟 CLI tradicional
+│   │   ├── main.go         # Interface de linha de comando
+│   │   └── write_tag.go    # Comandos de leitura/escrita
+│   └── web-server/         # (deprecado)
 ├── internal/
 │   ├── creality/           # Lógica específica da Creality
 │   │   ├── crypto.go       # Criptografia AES-ECB
 │   │   └── fields.go       # Parsing e formatação de campos
 │   └── rfid/               # Comunicação RFID
 │       └── reader.go       # Interface PC/SC
-├── go.mod                  # Dependências Go
-└── README.md              # Esta documentação
+├── web/                    # 🎨 Frontend da interface web
+│   ├── index.html          # Interface HTML/CSS/JS
+│   └── favicon.svg         # Ícone da aplicação
+├── tests/                  # 🧪 Ferramentas de teste
+│   ├── test_auth_read.go   # Teste de autenticação
+│   ├── test_basic_read.go  # Teste de leitura básica
+│   ├── test_decode_cfs.go  # Teste de decodificação
+│   └── test_read_diagnosis.go # Diagnóstico completo
+├── assets/                 # 🎨 Recursos visuais
+│   ├── icons/              # Ícones para instaladores
+│   └── dmg-background.svg  # Fundo do instalador macOS
+├── .github/workflows/      # 🚀 CI/CD
+│   └── build.yml           # Pipeline de build automático
+├── scripts/                # 📦 Scripts de release
+│   └── release.sh          # Script de empacotamento
+└── Dockerfile              # 🐳 Container Docker
 ```
+
+### API REST (Interface Web)
+
+A interface web expõe uma API REST simples:
+
+- `GET /api/status` - Status da aplicação
+- `GET /api/options` - Opções para dropdowns (materiais, fornecedores, etc.)
+- `POST /api/read-tag` - Leitura de tag RFID
+- `POST /api/write` - Gravação de tag RFID
 
 ### Dependências
 
 - `github.com/ebfe/scard` - Interface PC/SC para comunicação RFID
 - `crypto/aes` - Criptografia AES (biblioteca padrão)
+- Interface web nativa (sem dependências externas)
+
+### 🧪 Ferramentas de Diagnóstico
+
+```bash
+# Diagnóstico completo de leitura RFID
+go run tests/test_read_diagnosis.go
+
+# Teste de autenticação
+go run tests/test_auth_read.go
+
+# Teste de decodificação CFS
+go run tests/test_decode_cfs.go
+```
 
 ## 📊 Referência Técnica
 
@@ -162,13 +265,70 @@ O sistema Creality CFS armazena dados nos setores 1-2 das tags MIFARE Classic:
 - **Chave S1**: Derivada do UID usando chave "q3bu^t1nqfZ(pf$1"
 - **Payload**: Descriptografado com chave "H@CFkRnz@KAtBJp2"
 
-## 🌐 Interface Web (Em Desenvolvimento)
+#### Algoritmo de Autenticação
 
-Uma interface web está sendo desenvolvida para facilitar o uso da ferramenta:
+1. **Tags novas**: Key A = `FFFFFFFFFFFF` (padrão MIFARE)
+2. **Tags usadas**: Key A = derivada do UID usando algoritmo AES
+3. **Fallback**: Múltiplas tentativas com diferentes métodos
 
-- **Acesso local**: `http://localhost:8080`
-- **Leitura via browser**: Interface amigável para leitura de tags
-- **Compatibilidade**: Funciona com leitores RFID conectados via USB
+## 🎨 Paleta de Cores Predefinidas
+
+A interface web inclui 35 cores predefinidas baseadas no sistema Creality:
+
+| Categoria | Cores |
+|-----------|-------|
+| **Azuis** | #25C4DA, #0099A7, #0B359A, #0A4AB6, #11B6EE, #90C6F5 |
+| **Laranjas/Amarelos** | #FA7C0C, #F7B30F, #E5C20F, #B18F2E, #F8E911, #F6D311 |
+| **Marrons** | #8D766D, #6C4E43 |
+| **Vermelhos/Rosas** | #E62E2E, #EE2862, #EA2A2B, #E83D89, #AE2E65 |
+| **Roxos** | #611C8B, #8D60C7, #B287C9 |
+| **Verdes** | #006764, #018D80, #42B5AE, #1D822D, #54B351, #72E115 |
+| **Cinzas** | #474747, #668798, #B1BEC6, #58636E |
+| **Especiais** | #F2EFCE, #FFFFFF, #000000 |
+
+## 🚀 Releases e Versioning
+
+- **v1.2.0+**: Interface web completa com paleta de cores
+- **v1.1.1**: Correção crítica na derivação de chaves
+- **v1.1.0**: Primeira versão com instaladores nativos
+- **v1.0.x**: Versões CLI básicas
+
+### 📦 Sistema de Build Automático
+
+Cada tag `v*` gera automaticamente:
+- 🍎 Instalador DMG para macOS (com ícone customizado)
+- 🐧 AppImage portável para Linux
+- 🪟 Executável para Windows com installer
+- 🐳 Imagem Docker multi-arquitetura
+
+## ❓ FAQ
+
+### Como escolher entre CLI e Interface Web?
+
+- **Interface Web**: Recomendada para uso geral, mais intuitiva
+- **CLI**: Ideal para automação, scripts e desenvolvimento
+
+### A paleta de cores é limitada?
+
+Não! Você pode:
+- Escolher uma das 35 cores predefinidas (clique na paleta)
+- Digitar qualquer código hex manualmente no campo de texto
+- Usar o seletor de cor (clique no quadrado colorido)
+
+### Campos opcionais não funcionam?
+
+Os campos **Lote** e **Serial** são opcionais:
+- Lote vazio → automaticamente `000`
+- Serial vazio → automaticamente `000001`
+- Preenchimento com zeros à esquerda automático
+
+### Como diagnosticar problemas de leitura?
+
+```bash
+go run tests/test_read_diagnosis.go
+```
+
+Este comando testa sistematicamente todos os métodos de autenticação.
 
 ## 🤝 Contribuição
 
@@ -180,10 +340,28 @@ Contribuições são bem-vindas! Por favor:
 4. Push para a branch (`git push origin feature/nova-funcionalidade`)
 5. Abra um Pull Request
 
+### 🔧 Desenvolvimento Local
+
+```bash
+# Interface Web
+go run cmd/app/main.go
+
+# CLI
+go run cmd/cfs-spool/main.go read-tag
+
+# Testes
+go run tests/test_read_diagnosis.go
+```
+
 ## 📄 Licença
 
-Este projeto está licenciado sob a MIT License - veja o arquivo [LICENSE](LICENSE) para detalhes.
+Este projeto está sob licença MIT. Veja os detalhes em cada arquivo fonte.
 
 ## ⚠️ Disclaimer
 
 Este projeto é desenvolvido para fins educacionais e de interoperabilidade. Não é afiliado à Creality 3D Technology Co., Ltd.
+
+---
+
+**🏷️ CFS Spool v1.2.0+** - Sistema completo para tags RFID Creality  
+*Desenvolvido com ❤️ em Go*
