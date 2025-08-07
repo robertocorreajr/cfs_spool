@@ -42,8 +42,38 @@ jobs:
 
   build:
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     if: startsWith(github.ref, 'refs/tags/v')
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            name: linux-amd64
+            deps: sudo apt-get update && sudo apt-get install -y libpcsclite-dev pcscd pcsc-tools
+          - os: ubuntu-latest
+            goos: linux
+            goarch: arm64
+            name: linux-arm64
+            deps: sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu libpcsclite-dev pcscd pcsc-tools
+            cc: aarch64-linux-gnu-gcc
+          - os: macos-latest
+            goos: darwin
+            goarch: amd64
+            name: macos-amd64
+            deps: brew install pcsc-lite
+          - os: macos-latest
+            goos: darwin
+            goarch: arm64
+            name: macos-arm64
+            deps: brew install pcsc-lite
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+            name: windows-amd64
+            deps: echo "Windows build"
+            ext: .exe
     
     steps:
     - uses: actions/checkout@v4
@@ -55,50 +85,80 @@ jobs:
         cache: false
     
     - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libpcsclite-dev pcscd pcsc-tools
+      run: ${{ matrix.deps }}
+      shell: bash
     
-    - name: Build for Linux AMD64
+    - name: Build binaries
       env:
-        GOOS: linux
-        GOARCH: amd64
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
         CGO_ENABLED: 1
+        CC: ${{ matrix.cc }}
       run: |
         go build -ldflags "-s -w -X main.version=${{ github.ref_name }}" \
-          -o cfs-spool-cli-linux-amd64 ./cmd/cfs-spool
+          -o cfs-spool-cli-${{ matrix.name }}${{ matrix.ext }} ./cmd/cfs-spool
         go build -ldflags "-s -w -X main.version=${{ github.ref_name }}" \
-          -o cfs-spool-web-linux-amd64 ./cmd/web-server
+          -o cfs-spool-web-${{ matrix.name }}${{ matrix.ext }} ./cmd/web-server
+      shell: bash
     
-    - name: Create Linux package
+    - name: Create package
       run: |
-        mkdir -p release/cfs-spool-linux-amd64
-        cp cfs-spool-*-linux-amd64 release/cfs-spool-linux-amd64/
-        cp -r web release/cfs-spool-linux-amd64/
-        cp README.md release/cfs-spool-linux-amd64/
+        mkdir -p release/cfs-spool-${{ matrix.name }}
+        cp cfs-spool-*-${{ matrix.name }}${{ matrix.ext }} release/cfs-spool-${{ matrix.name }}/
+        cp -r web release/cfs-spool-${{ matrix.name }}/
+        cp README.md release/cfs-spool-${{ matrix.name }}/
         
-        # Create install script
-        cat > release/cfs-spool-linux-amd64/install.sh << 'EOF'
+        # Create platform-specific install script
+        if [[ "${{ matrix.goos }}" == "linux" ]]; then
+          cat > release/cfs-spool-${{ matrix.name }}/install.sh << 'EOF'
         #!/bin/bash
-        echo "Installing CFS Spool..."
+        echo "Installing CFS Spool for Linux..."
         echo "1. Install PC/SC: sudo apt-get install pcscd pcsc-tools libpcsclite1"
         echo "2. Connect your RFID reader"
-        echo "3. Run: ./cfs-spool-web-linux-amd64"
+        echo "3. Run: ./cfs-spool-web-${{ matrix.name }}"
         echo "4. Open: http://localhost:8080"
-        echo "CLI usage: ./cfs-spool-cli-linux-amd64 read-tag"
+        echo "CLI usage: ./cfs-spool-cli-${{ matrix.name }} read-tag"
         EOF
-        chmod +x release/cfs-spool-linux-amd64/install.sh
-        chmod +x release/cfs-spool-linux-amd64/cfs-spool-*
+          chmod +x release/cfs-spool-${{ matrix.name }}/install.sh
+        elif [[ "${{ matrix.goos }}" == "darwin" ]]; then
+          cat > release/cfs-spool-${{ matrix.name }}/install.sh << 'EOF'
+        #!/bin/bash
+        echo "Installing CFS Spool for macOS..."
+        echo "1. Install PC/SC: brew install pcsc-lite"
+        echo "2. Connect your RFID reader"
+        echo "3. Run: ./cfs-spool-web-${{ matrix.name }}"
+        echo "4. Open: http://localhost:8080"
+        echo "CLI usage: ./cfs-spool-cli-${{ matrix.name }} read-tag"
+        EOF
+          chmod +x release/cfs-spool-${{ matrix.name }}/install.sh
+        elif [[ "${{ matrix.goos }}" == "windows" ]]; then
+          cat > release/cfs-spool-${{ matrix.name }}/install.bat << 'EOF'
+        @echo off
+        echo Installing CFS Spool for Windows...
+        echo 1. Install PC/SC drivers for your RFID reader
+        echo 2. Connect your RFID reader
+        echo 3. Run: cfs-spool-web-${{ matrix.name }}.exe
+        echo 4. Open: http://localhost:8080
+        echo CLI usage: cfs-spool-cli-${{ matrix.name }}.exe read-tag
+        EOF
+        fi
+        
+        chmod +x release/cfs-spool-${{ matrix.name }}/cfs-spool-*
         
         # Create archive
         cd release
-        tar -czf ../cfs-spool-linux-amd64.tar.gz cfs-spool-linux-amd64/
+        if [[ "${{ matrix.goos }}" == "windows" ]]; then
+          zip -r ../cfs-spool-${{ matrix.name }}.zip cfs-spool-${{ matrix.name }}/
+        else
+          tar -czf ../cfs-spool-${{ matrix.name }}.tar.gz cfs-spool-${{ matrix.name }}/
+        fi
+      shell: bash
     
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: cfs-spool-linux-amd64
-        path: cfs-spool-linux-amd64.tar.gz
+        name: cfs-spool-${{ matrix.name }}
+        path: cfs-spool-${{ matrix.name }}.*
 
   release:
     needs: build
@@ -108,11 +168,18 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Download artifacts
+    - name: Download all artifacts
       uses: actions/download-artifact@v4
       with:
-        name: cfs-spool-linux-amd64
-        path: .
+        path: artifacts
+    
+    - name: Organize release files
+      run: |
+        mkdir -p release-files
+        find artifacts -name "*.tar.gz" -o -name "*.zip" | while read file; do
+          cp "$file" release-files/
+        done
+        ls -la release-files/
     
     - name: Create Release
       uses: softprops/action-gh-release@v1
@@ -123,23 +190,40 @@ jobs:
         body: |
           ## 🎉 CFS Spool ${{ github.ref_name }}
           
-          ### 📦 Downloads
+          ### 📦 Downloads por Plataforma
           
-          - **Linux 64-bit**: `cfs-spool-linux-amd64.tar.gz`
+          #### 🐧 Linux
+          - **Linux AMD64**: `cfs-spool-linux-amd64.tar.gz`
+          - **Linux ARM64**: `cfs-spool-linux-arm64.tar.gz`
+          
+          #### 🍎 macOS
+          - **macOS Intel**: `cfs-spool-macos-amd64.tar.gz`
+          - **macOS Apple Silicon**: `cfs-spool-macos-arm64.tar.gz`
+          
+          #### 🪟 Windows
+          - **Windows 64-bit**: `cfs-spool-windows-amd64.zip`
           
           ### 🚀 Quick Start
           
-          1. Download and extract the package
-          2. Install PC/SC: `sudo apt-get install pcscd pcsc-tools libpcsclite1`
-          3. Connect your ACR122U RFID reader
-          4. Run: `./cfs-spool-web-linux-amd64`
-          5. Open: http://localhost:8080
+          #### Linux/macOS:
+          1. Download e extraia o pacote da sua plataforma
+          2. Execute o script de instalação: `./install.sh`
+          3. Conecte seu leitor RFID ACR122U
+          4. Execute: `./cfs-spool-web-[platform]`
+          5. Abra: http://localhost:8080
+          
+          #### Windows:
+          1. Download e extraia: `cfs-spool-windows-amd64.zip`
+          2. Execute: `install.bat` para ver instruções
+          3. Conecte seu leitor RFID ACR122U
+          4. Execute: `cfs-spool-web-windows-amd64.exe`
+          5. Abra: http://localhost:8080
           
           ### 🆘 Support
           
           - Issues: https://github.com/robertocorreajr/cfs_spool/issues
           - Documentation: https://github.com/robertocorreajr/cfs_spool#readme
         files: |
-          cfs-spool-linux-amd64.tar.gz
+          release-files/*
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
