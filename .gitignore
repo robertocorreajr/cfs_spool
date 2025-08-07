@@ -1,5 +1,6 @@
 # Binários compilados
 cfs-spool
+cfs-spool-*
 *.exe
 *.exe~
 *.dll
@@ -15,6 +16,12 @@ cfs-spool
 # Arquivos temporários do Go
 vendor/
 
+# Build directories
+bin/
+dist/
+releases/
+tmp/
+
 # Arquivos do sistema
 .DS_Store
 *.swp
@@ -28,3 +35,12 @@ vendor/
 
 # Logs
 *.log
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Backup files
+*.bak
+*.backup
