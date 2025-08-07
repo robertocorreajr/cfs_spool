@@ -374,7 +374,7 @@ jobs:
         !define COMPANYNAME "Creality"
         !define DESCRIPTION "Creality CFS RFID Tag Reader"
         !define VERSIONMAJOR 1
-        !define VERSIONMINOR 0
+        !define VERSIONMINOR 1
         !define VERSIONBUILD 0
         !define HELPURL "https://github.com/robertocorreajr/cfs_spool"
         !define UPDATEURL "https://github.com/robertocorreajr/cfs_spool/releases"
@@ -392,19 +392,8 @@ jobs:
         page directory
         page instfiles
         
-        !macro VerifyUserIsAdmin
-        UserInfo::GetAccountType
-        Pop $0
-        ${If} $0 != "admin"
-            messageBox MB_ICONSTOP "Administrator rights required!"
-            setErrorLevel 740
-            quit
-        ${EndIf}
-        !macroend
-        
         function .onInit
             setShellVarContext all
-            !insertmacro VerifyUserIsAdmin
         functionEnd
         
         section "install"
