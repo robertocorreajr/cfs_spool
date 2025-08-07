@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background with rounded corners -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4CAF50;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2E7D32;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Rounded rectangle background -->
+  <rect x="0" y="0" width="512" height="512" rx="90" ry="90" fill="url(#bgGradient)"/>
+  
+  <!-- Main spool/coil design -->
+  <g transform="translate(256,256)">
+    <!-- Outer signal waves -->
+    <g stroke="white" stroke-width="16" fill="none">
+      <!-- Left waves -->
+      <path d="M -140,0 A 50,50 0 0,0 -140,0" stroke-width="12"/>
+      <path d="M -120,-25 A 75,75 0 0,0 -120,25" stroke-width="12"/>
+      <path d="M -100,-45 A 100,100 0 0,0 -100,45" stroke-width="12"/>
+      
+      <!-- Right waves -->
+      <path d="M 140,0 A 50,50 0 0,1 140,0" stroke-width="12"/>
+      <path d="M 120,-25 A 75,75 0 0,1 120,25" stroke-width="12"/>
+      <path d="M 100,-45 A 100,100 0 0,1 100,45" stroke-width="12"/>
+    </g>
+    
+    <!-- Central spool structure -->
+    <g fill="white">
+      <!-- Outer ring -->
+      <circle cx="0" cy="0" r="90" fill="none" stroke="white" stroke-width="8"/>
+      
+      <!-- Inner spokes/rays -->
+      <g stroke="white" stroke-width="6" fill="none">
+        <line x1="0" y1="-35" x2="0" y2="-55"/>
+        <line x1="25" y1="-25" x2="39" y2="-39"/>
+        <line x1="35" y1="0" x2="55" y2="0"/>
+        <line x1="25" y1="25" x2="39" y2="39"/>
+        <line x1="0" y1="35" x2="0" y2="55"/>
+        <line x1="-25" y1="25" x2="-39" y2="39"/>
+        <line x1="-35" y1="0" x2="-55" y2="0"/>
+        <line x1="-25" y1="-25" x2="-39" y2="-39"/>
+      </g>
+      
+      <!-- Central oval/core -->
+      <ellipse cx="0" cy="0" rx="30" ry="45" fill="white"/>
+      
+      <!-- Coil wire representation -->
+      <g stroke="white" stroke-width="3" fill="none">
+        <path d="M -70,-10 Q -50,-30 -30,-10 Q -10,10 10,-10 Q 30,10 50,-10 Q 70,10 70,10"/>
+        <path d="M -70,0 Q -50,20 -30,0 Q -10,-20 10,0 Q 30,-20 50,0 Q 70,-20 70,0"/>
+        <path d="M -70,10 Q -50,30 -30,10 Q -10,-10 10,10 Q 30,-10 50,10 Q 70,-10 70,-10"/>
+      </g>
+    </g>
+  </g>
+</svg>

@@ -230,7 +230,30 @@ jobs:
       if: matrix.platform == 'macos'
       run: |
         # Install create-dmg
-        brew install create-dmg
+        brew install create-dmg imagemagick
+        
+        # Generate icons from SVG
+        echo "Generating app icons..."
+        mkdir -p iconset.iconset
+        
+        # Generate PNG icons in different sizes
+        sizes=(16 32 64 128 256 512 1024)
+        for size in "${sizes[@]}"; do
+          echo "Generating ${size}x${size} icon..."
+          convert -background none assets/icons/cfs-spool.svg -resize ${size}x${size} iconset.iconset/icon_${size}x${size}.png
+          
+          # Generate 2x versions for retina
+          if [ $size -le 512 ]; then
+            double_size=$((size * 2))
+            convert -background none assets/icons/cfs-spool.svg -resize ${double_size}x${double_size} iconset.iconset/icon_${size}x${size}@2x.png
+          fi
+        done
+        
+        # Create .icns file
+        iconutil -c icns iconset.iconset -o app.icns
+        
+        # Generate DMG background
+        convert -background none assets/dmg-background.svg -resize 600x400 dmg-background.png
         
         # Create app bundle structure
         mkdir -p "CFS Spool.app/Contents/MacOS"
@@ -243,7 +266,10 @@ jobs:
         # Copy web assets
         cp -r installer-workspace/*/web "CFS Spool.app/Contents/Resources/"
         
-        # Create Info.plist
+        # Copy app icon
+        cp app.icns "CFS Spool.app/Contents/Resources/app.icns"
+        
+        # Create Info.plist with icon reference
         cat > "CFS Spool.app/Contents/Info.plist" << 'EOF'
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -255,16 +281,25 @@ jobs:
             <string>com.creality.cfs-spool</string>
             <key>CFBundleName</key>
             <string>CFS Spool</string>
+            <key>CFBundleDisplayName</key>
+            <string>CFS Spool</string>
             <key>CFBundleVersion</key>
             <string>${{ github.ref_name }}</string>
             <key>CFBundleShortVersionString</key>
             <string>${{ github.ref_name }}</string>
             <key>CFBundlePackageType</key>
             <string>APPL</string>
+            <key>CFBundleIconFile</key>
+            <string>app.icns</string>
             <key>LSUIElement</key>
             <true/>
             <key>NSHighResolutionCapable</key>
             <true/>
+            <key>NSAppTransportSecurity</key>
+            <dict>
+                <key>NSAllowsLocalNetworking</key>
+                <true/>
+            </dict>
         </dict>
         </plist>
         EOF
@@ -273,15 +308,17 @@ jobs:
         chmod +x "CFS Spool.app/Contents/MacOS/cfs-spool"
         chmod +x "CFS Spool.app/Contents/MacOS/cfs-spool-cli"
         
-        # Create DMG
+        # Create DMG with custom background and professional layout
         create-dmg \
           --volname "CFS Spool ${{ github.ref_name }}" \
+          --background "dmg-background.png" \
           --window-pos 200 120 \
           --window-size 600 400 \
-          --icon-size 100 \
-          --icon "CFS Spool.app" 175 190 \
+          --icon-size 128 \
+          --icon "CFS Spool.app" 150 200 \
           --hide-extension "CFS Spool.app" \
-          --app-drop-link 425 190 \
+          --app-drop-link 450 200 \
+          --eula "README.md" \
           "cfs-spool-${{ github.ref_name }}.dmg" \
           "CFS Spool.app"
     

@@ -44,3 +44,8 @@ tmp/
 # Backup files
 *.bak
 *.backup
+
+# Generated icons
+*.icns
+*.iconset/
+iconset.iconset/
