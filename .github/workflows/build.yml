@@ -360,82 +360,66 @@ jobs:
         choco install nsis -y
         
         # Create installer directory structure
-        mkdir -p installer/bin
-        mkdir -p installer/web
+        New-Item -ItemType Directory -Force -Path "installer\bin"
+        New-Item -ItemType Directory -Force -Path "installer\web"
         
-        # Copy files
-        Get-ChildItem installer-workspace -Recurse -Name "cfs-spool-app-*.exe" | ForEach-Object { Copy-Item "installer-workspace/$_" "installer/bin/cfs-spool.exe" }
-        Get-ChildItem installer-workspace -Recurse -Name "cfs-spool-cli-*.exe" | ForEach-Object { Copy-Item "installer-workspace/$_" "installer/bin/cfs-spool-cli.exe" }
-        Copy-Item -Recurse installer-workspace/*/web/* installer/web/
+        # Copy files with better error handling
+        Write-Host "Copying application files..."
+        Get-ChildItem installer-workspace -Recurse -Name "cfs-spool-app-*.exe" | ForEach-Object { 
+            Write-Host "Found app: $_"
+            Copy-Item "installer-workspace\$_" "installer\bin\cfs-spool.exe" -Force
+        }
+        Get-ChildItem installer-workspace -Recurse -Name "cfs-spool-cli-*.exe" | ForEach-Object { 
+            Write-Host "Found CLI: $_"
+            Copy-Item "installer-workspace\$_" "installer\bin\cfs-spool-cli.exe" -Force
+        }
         
-        # Create NSIS script
-        @"
-        !define APPNAME "CFS Spool"
-        !define COMPANYNAME "Creality"
-        !define DESCRIPTION "Creality CFS RFID Tag Reader"
-        !define VERSIONMAJOR 1
-        !define VERSIONMINOR 1
-        !define VERSIONBUILD 0
-        !define HELPURL "https://github.com/robertocorreajr/cfs_spool"
-        !define UPDATEURL "https://github.com/robertocorreajr/cfs_spool/releases"
-        !define ABOUTURL "https://github.com/robertocorreajr/cfs_spool"
-        !define INSTALLSIZE 50000
+        # Copy web files
+        Get-ChildItem installer-workspace -Recurse -Directory -Name "*" | ForEach-Object { 
+            if (Test-Path "installer-workspace\$_\web") {
+                Write-Host "Copying web files from: $_"
+                Copy-Item -Recurse "installer-workspace\$_\web\*" "installer\web\" -Force
+            }
+        }
         
-        RequestExecutionLevel admin
-        InstallDir "$PROGRAMFILES\${APPNAME}"
-        Name "${APPNAME}"
-        outFile "cfs-spool-${{ github.ref_name }}-installer.exe"
+        # Create NSIS script line by line
+        "!define APPNAME `"CFS Spool`"" | Out-File "installer.nsi" -Encoding ASCII
+        "!define COMPANYNAME `"Creality`"" | Out-File "installer.nsi" -Append -Encoding ASCII
+        "!define DESCRIPTION `"Creality CFS RFID Tag Reader`"" | Out-File "installer.nsi" -Append -Encoding ASCII
+        "" | Out-File "installer.nsi" -Append -Encoding ASCII
+        "RequestExecutionLevel admin" | Out-File "installer.nsi" -Append -Encoding ASCII
+        "InstallDir `"`$PROGRAMFILES\CFS Spool`"" | Out-File "installer.nsi" -Append -Encoding ASCII
+        "Name `"CFS Spool`"" | Out-File "installer.nsi" -Append -Encoding ASCII
+        "OutFile `"cfs-spool-${{ github.ref_name }}-installer.exe`"" | Out-File "installer.nsi" -Append -Encoding ASCII
+        "" | Out-File "installer.nsi" -Append -Encoding ASCII
+        "Page components" | Out-File "installer.nsi" -Append -Encoding ASCII
+        "Page directory" | Out-File "installer.nsi" -Append -Encoding ASCII
+        "Page instfiles" | Out-File "installer.nsi" -Append -Encoding ASCII
+        "" | Out-File "installer.nsi" -Append -Encoding ASCII
+        "Section `"CFS Spool`" SecMain" | Out-File "installer.nsi" -Append -Encoding ASCII
+        "    SectionIn RO" | Out-File "installer.nsi" -Append -Encoding ASCII
+        "    SetOutPath `$INSTDIR" | Out-File "installer.nsi" -Append -Encoding ASCII
+        "    File /r `"installer\*`"" | Out-File "installer.nsi" -Append -Encoding ASCII
+        "    WriteUninstaller `"`$INSTDIR\uninstall.exe`"" | Out-File "installer.nsi" -Append -Encoding ASCII
+        "    CreateDirectory `"`$SMPROGRAMS\CFS Spool`"" | Out-File "installer.nsi" -Append -Encoding ASCII
+        "    CreateShortCut `"`$SMPROGRAMS\CFS Spool\CFS Spool.lnk`" `"`$INSTDIR\bin\cfs-spool.exe`"" | Out-File "installer.nsi" -Append -Encoding ASCII
+        "    CreateShortCut `"`$DESKTOP\CFS Spool.lnk`" `"`$INSTDIR\bin\cfs-spool.exe`"" | Out-File "installer.nsi" -Append -Encoding ASCII
+        "SectionEnd" | Out-File "installer.nsi" -Append -Encoding ASCII
+        "" | Out-File "installer.nsi" -Append -Encoding ASCII
+        "Section `"Uninstall`"" | Out-File "installer.nsi" -Append -Encoding ASCII
+        "    Delete `"`$SMPROGRAMS\CFS Spool\CFS Spool.lnk`"" | Out-File "installer.nsi" -Append -Encoding ASCII
+        "    Delete `"`$DESKTOP\CFS Spool.lnk`"" | Out-File "installer.nsi" -Append -Encoding ASCII
+        "    RMDir `"`$SMPROGRAMS\CFS Spool`"" | Out-File "installer.nsi" -Append -Encoding ASCII
+        "    Delete `"`$INSTDIR\uninstall.exe`"" | Out-File "installer.nsi" -Append -Encoding ASCII
+        "    RMDir /r `"`$INSTDIR`"" | Out-File "installer.nsi" -Append -Encoding ASCII
+        "SectionEnd" | Out-File "installer.nsi" -Append -Encoding ASCII
         
-        !include LogicLib.nsh
-        
-        page components
-        page directory
-        page instfiles
-        
-        function .onInit
-            setShellVarContext all
-        functionEnd
-        
-        section "install"
-            setOutPath $INSTDIR
-            file /r "installer\*"
-            
-            writeUninstaller "$INSTDIR\uninstall.exe"
-            
-            createDirectory "$SMPROGRAMS\${APPNAME}"
-            createShortCut "$SMPROGRAMS\${APPNAME}\${APPNAME}.lnk" "$INSTDIR\bin\cfs-spool.exe"
-            createShortCut "$DESKTOP\${APPNAME}.lnk" "$INSTDIR\bin\cfs-spool.exe"
-            
-            writeRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "DisplayName" "${APPNAME}"
-            writeRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "UninstallString" "$\"$INSTDIR\uninstall.exe$\""
-            writeRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "QuietUninstallString" "$\"$INSTDIR\uninstall.exe$\" /S"
-            writeRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "InstallLocation" "$\"$INSTDIR$\""
-            writeRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "Publisher" "${COMPANYNAME}"
-            writeRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "HelpLink" "${HELPURL}"
-            writeRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "URLUpdateInfo" "${UPDATEURL}"
-            writeRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "URLInfoAbout" "${ABOUTURL}"
-            writeRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "DisplayVersion" "${VERSIONMAJOR}.${VERSIONMINOR}.${VERSIONBUILD}"
-            writeRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "VersionMajor" ${VERSIONMAJOR}
-            writeRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "VersionMinor" ${VERSIONMINOR}
-            writeRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "NoModify" 1
-            writeRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "NoRepair" 1
-            writeRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "EstimatedSize" ${INSTALLSIZE}
-        sectionEnd
-        
-        section "uninstall"
-            delete "$SMPROGRAMS\${APPNAME}\${APPNAME}.lnk"
-            delete "$DESKTOP\${APPNAME}.lnk"
-            rmDir "$SMPROGRAMS\${APPNAME}"
-            
-            delete $INSTDIR\uninstall.exe
-            rmDir /r $INSTDIR
-            
-            deleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}"
-        sectionEnd
-        "@ | Out-File -FilePath installer.nsi -Encoding ASCII
+        # Debug: show the created script
+        Write-Host "Created NSIS script:"
+        Get-Content "installer.nsi"
         
         # Build installer
-        & "C:\Program Files (x86)\NSIS\makensis.exe" installer.nsi
+        & "C:\Program Files (x86)\NSIS\makensis.exe" "installer.nsi"
       shell: powershell
     
     - name: Upload native installer
