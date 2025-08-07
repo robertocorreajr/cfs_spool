@@ -263,6 +263,63 @@
             margin-top: 5px;
         }
         
+        .color-palette {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(30px, 1fr));
+            gap: 8px;
+            margin-top: 10px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .color-option {
+            width: 30px;
+            height: 30px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s;
+            position: relative;
+        }
+        
+        .color-option:hover {
+            transform: scale(1.1);
+            border-color: #667eea;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        
+        .color-option.selected {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+        
+        .color-option::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .color-option.selected::after {
+            opacity: 1;
+        }
+        
+        .color-input-section {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
         @media (max-width: 768px) {
             .form-row {
                 flex-direction: column;
@@ -323,8 +380,8 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="batch">📦 Lote</label>
-                            <input type="text" id="batch" maxlength="3" placeholder="Ex: 1A5" required>
-                            <div class="field-limit-info">Máximo 3 caracteres. Será preenchido com zeros à esquerda se necessário.</div>
+                            <input type="text" id="batch" maxlength="3" placeholder="Ex: 1A5 (opcional - será '000' se vazio)">
+                            <div class="field-limit-info">Máximo 3 caracteres. Campo opcional - será preenchido com '000' se deixado em branco.</div>
                         </div>
                         
                         <div class="form-group">
@@ -350,10 +407,11 @@
                         
                         <div class="form-group">
                             <label for="color">🎨 Cor (Hex)</label>
-                            <div style="display: flex; align-items: center; gap: 10px;">
+                            <div class="color-input-section">
                                 <div id="color-preview" class="color-preview" onclick="openColorPicker()"></div>
                                 <input type="text" id="color" placeholder="Ex: FF40130" maxlength="7" onchange="updateColorPreview()" required>
                             </div>
+                            <div id="color-palette" class="color-palette"></div>
                             <input type="color" id="color-picker" onchange="updateColorHex()" style="display: none;">
                         </div>
                     </div>
@@ -372,8 +430,8 @@
                         
                         <div class="form-group">
                             <label for="serial">🔢 Serial</label>
-                            <input type="text" id="serial" placeholder="Ex: 1" maxlength="6" required>
-                            <div class="field-limit-info">Máximo 6 dígitos. Será preenchido com zeros à esquerda se necessário.</div>
+                            <input type="text" id="serial" placeholder="Ex: 1 (opcional - será '000001' se vazio)" maxlength="6">
+                            <div class="field-limit-info">Máximo 6 dígitos. Campo opcional - será preenchido com '000001' se deixado em branco.</div>
                         </div>
                     </div>
                     
@@ -399,6 +457,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             loadOptions();
             setDefaultDate();
+            setupColorPalette();
         });
         
         // Alternar entre tabs
@@ -545,15 +604,92 @@
                 const rgb = colorHex.value.substring(0, 6);
                 preview.style.background = `#${rgb}`;
                 preview.classList.add('has-color');
+                
+                // Destacar cor na paleta se corresponder
+                highlightPaletteColor(`#${rgb.toUpperCase()}`);
             } else {
                 preview.style.background = '#f8f9fa';
                 preview.classList.remove('has-color');
+                
+                // Remover seleção da paleta
+                document.querySelectorAll('.color-option').forEach(el => {
+                    el.classList.remove('selected');
+                });
             }
+        }
+        
+        // Destacar cor correspondente na paleta
+        function highlightPaletteColor(hexColor) {
+            document.querySelectorAll('.color-option').forEach(el => {
+                el.classList.remove('selected');
+                
+                // Verificar se a cor de fundo corresponde
+                const elementColor = rgb2hex(el.style.backgroundColor);
+                if (elementColor.toUpperCase() === hexColor.toUpperCase()) {
+                    el.classList.add('selected');
+                }
+            });
+        }
+        
+        // Converter rgb(r,g,b) para #RRGGBB
+        function rgb2hex(rgb) {
+            if (rgb.startsWith('#')) return rgb;
+            
+            const values = rgb.match(/\d+/g);
+            if (!values || values.length < 3) return rgb;
+            
+            const r = parseInt(values[0]).toString(16).padStart(2, '0');
+            const g = parseInt(values[1]).toString(16).padStart(2, '0');
+            const b = parseInt(values[2]).toString(16).padStart(2, '0');
+            
+            return `#${r}${g}${b}`;
         }
         
         // Abrir color picker
         function openColorPicker() {
             document.getElementById('color-picker').click();
+        }
+        
+        // Cores predefinidas baseadas na função Java
+        const presetColors = [
+            "#25C4DA", "#0099A7", "#0B359A", "#0A4AB6", "#11B6EE", "#90C6F5",
+            "#FA7C0C", "#F7B30F", "#E5C20F", "#B18F2E", "#8D766D", "#6C4E43",
+            "#E62E2E", "#EE2862", "#EA2A2B", "#E83D89", "#AE2E65", "#611C8B",
+            "#8D60C7", "#B287C9", "#006764", "#018D80", "#42B5AE", "#1D822D",
+            "#54B351", "#72E115", "#474747", "#668798", "#B1BEC6", "#58636E",
+            "#F8E911", "#F6D311", "#F2EFCE", "#FFFFFF", "#000000"
+        ];
+        
+        // Configurar paleta de cores
+        function setupColorPalette() {
+            const palette = document.getElementById('color-palette');
+            
+            presetColors.forEach(color => {
+                const colorOption = document.createElement('div');
+                colorOption.className = 'color-option';
+                colorOption.style.backgroundColor = color;
+                colorOption.title = color.substring(1).toUpperCase() + '0'; // Formato CFS
+                colorOption.addEventListener('click', () => selectPresetColor(color, colorOption));
+                palette.appendChild(colorOption);
+            });
+        }
+        
+        // Selecionar cor predefinida
+        function selectPresetColor(hexColor, element) {
+            // Remover seleção anterior
+            document.querySelectorAll('.color-option').forEach(el => {
+                el.classList.remove('selected');
+            });
+            
+            // Selecionar nova cor
+            element.classList.add('selected');
+            
+            // Converter para formato CFS (RRGGBB0)
+            const cfsColor = hexColor.substring(1).toUpperCase() + '0';
+            
+            // Atualizar campos
+            document.getElementById('color').value = cfsColor;
+            updateColorPreview();
         }
         
         // Mostrar/ocultar campo de comprimento customizado
@@ -645,6 +781,26 @@
         document.getElementById('write-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             
+            // Validação customizada para campos obrigatórios
+            const supplier = document.getElementById('supplier').value;
+            const material = document.getElementById('material').value;
+            const color = document.getElementById('color').value;
+            const length = document.getElementById('length').value;
+            
+            if (!supplier || !material || !color || (!length && length !== 'CUSTOM')) {
+                alert('Por favor, preencha os campos obrigatórios: Fornecedor, Material, Cor e Comprimento.');
+                return;
+            }
+            
+            // Verificar se comprimento customizado foi preenchido
+            if (length === 'CUSTOM') {
+                const customLength = document.getElementById('length-grams').value;
+                if (!customLength) {
+                    alert('Por favor, preencha o peso em gramas para comprimento customizado.');
+                    return;
+                }
+            }
+            
             const loading = document.getElementById('write-loading');
             const result = document.getElementById('write-result');
             
@@ -706,11 +862,19 @@
         
         // Preencher lote com zeros à esquerda (máximo 3 chars)
         function padBatch(batch) {
+            // Se vazio, usar "000"
+            if (!batch || batch.trim() === '') {
+                return '000';
+            }
             return batch.padStart(3, '0');
         }
         
         // Preencher serial com zeros à esquerda (máximo 6 chars)
         function padSerial(serial) {
+            // Se vazio, usar "000001"
+            if (!serial || serial.trim() === '') {
+                return '000001';
+            }
             return serial.padStart(6, '0');
         }
     </script>
