@@ -263,7 +263,16 @@ func readTagHandler(w http.ResponseWriter, r *http.Request) {
 		data, err = reader.TryReadBlock(block, rfid.KeyTypeA, "FFFFFFFFFFFF")
 		if err != nil {
 			// Se falhar, tentar key derivada do UID para tags usadas
-			derivedKey := reader.DeriveKeyFromUID(uid)
+			derivedKey, keyErr := creality.DeriveS1KeyFromUID(uid)
+			if keyErr != nil {
+				response := ReadResponse{
+					Success: false,
+					Error:   fmt.Sprintf("Erro ao derivar chave do UID %s: %v", uid, keyErr),
+				}
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(response)
+				return
+			}
 			data, err = reader.TryReadBlock(block, rfid.KeyTypeA, derivedKey)
 			if err != nil {
 				response := ReadResponse{
