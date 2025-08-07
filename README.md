@@ -127,8 +127,8 @@ go build -o cfs-spool-cli ./cmd/cfs-spool
 
 ### 🛒 Recommended Hardware (Affiliate Links)
 
-- **🏷️ [ACR122U RFID Reader](https://s.click.aliexpress.com/e/_ok8qAl9){:target="_blank"}** - Reader used in development (compatibility guaranteed)
-- **📇 [MIFARE Classic 1K Tags](https://s.click.aliexpress.com/e/_oBPVnEb){:target="_blank"}** - Compatible tags tested in the project
+- **🏷️ [ACR122U RFID Reader](https://s.click.aliexpress.com/e/_ok8qAl9)** – Reader used in development (compatibility guaranteed)
+- **📇 [MIFARE Classic 1K Tags](https://s.click.aliexpress.com/e/_oBPVnEb)** – Compatible tags tested in the project
 
 ### Tested RFID Readers
 - **ACR122U** ✅ (recommended)
