@@ -204,15 +204,26 @@ jobs:
     - name: Download platform artifacts
       uses: actions/download-artifact@v4
       with:
-        pattern: ${{ matrix.artifact_pattern }}
         path: artifacts
-        merge-multiple: true
     
     - name: Prepare installer workspace
       run: |
         mkdir -p installer-workspace
-        find artifacts -name "*.zip" | head -1 | xargs -I {} unzip {} -d installer-workspace/
-        ls -la installer-workspace/
+        echo "Looking for ZIP files..."
+        find artifacts -name "*.zip" -type f || echo "No ZIP files found"
+        ls -la artifacts/ || echo "No artifacts directory"
+        
+        # Extract first ZIP found
+        if [ -f "$(find artifacts -name "*.zip" | head -1)" ]; then
+          echo "Extracting ZIP file..."
+          find artifacts -name "*.zip" | head -1 | xargs -I {} unzip {} -d installer-workspace/
+          echo "Contents after extraction:"
+          ls -la installer-workspace/
+        else
+          echo "ERROR: No ZIP files found in artifacts"
+          exit 1
+        fi
+      shell: bash
     
     # macOS DMG Creation
     - name: Create macOS DMG
@@ -265,7 +276,6 @@ jobs:
         # Create DMG
         create-dmg \
           --volname "CFS Spool ${{ github.ref_name }}" \
-          --volicon "CFS Spool.app/Contents/Resources/web/favicon.ico" \
           --window-pos 200 120 \
           --window-size 600 400 \
           --icon-size 100 \
@@ -281,7 +291,7 @@ jobs:
       run: |
         # Install dependencies
         sudo apt-get update
-        sudo apt-get install -y wget file
+        sudo apt-get install -y wget file libpcsclite1 libpcsclite-dev
         
         # Download linuxdeploy and AppImageTool
         wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
@@ -289,6 +299,7 @@ jobs:
         
         # Create AppDir structure
         mkdir -p AppDir/usr/bin
+        mkdir -p AppDir/usr/lib
         mkdir -p AppDir/usr/share/applications
         mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
         mkdir -p AppDir/usr/share/cfs-spool
@@ -299,6 +310,10 @@ jobs:
         
         # Copy web assets
         cp -r installer-workspace/*/web AppDir/usr/share/cfs-spool/
+        
+        # Copy PC/SC libraries
+        cp /usr/lib/x86_64-linux-gnu/libpcsclite.so.1 AppDir/usr/lib/ || true
+        cp /lib/x86_64-linux-gnu/libpcsclite.so.1 AppDir/usr/lib/ || true
         
         # Create desktop file
         cat > AppDir/usr/share/applications/cfs-spool.desktop << 'EOF'
@@ -324,8 +339,15 @@ jobs:
         chmod +x AppDir/usr/bin/cfs-spool
         chmod +x AppDir/usr/bin/cfs-spool-cli
         
-        # Create AppImage
-        ./linuxdeploy-x86_64.AppImage --appdir AppDir --output appimage
+        # Create AppImage with bundled libraries
+        export LD_LIBRARY_PATH="$PWD/AppDir/usr/lib:$LD_LIBRARY_PATH"
+        ./linuxdeploy-x86_64.AppImage --appdir AppDir --output appimage --library AppDir/usr/lib/libpcsclite.so.1 || true
+        
+        # Fallback: try without library bundling
+        if [ ! -f *.AppImage ]; then
+          echo "Trying without library bundling..."
+          ./linuxdeploy-x86_64.AppImage --appdir AppDir --output appimage
+        fi
         
         # Rename to proper name
         mv CFS_Spool*.AppImage "cfs-spool-${{ github.ref_name }}.AppImage" || mv *.AppImage "cfs-spool-${{ github.ref_name }}.AppImage"
@@ -362,7 +384,6 @@ jobs:
         RequestExecutionLevel admin
         InstallDir "$PROGRAMFILES\${APPNAME}"
         Name "${APPNAME}"
-        Icon "installer\web\favicon.ico"
         outFile "cfs-spool-${{ github.ref_name }}-installer.exe"
         
         !include LogicLib.nsh
@@ -393,14 +414,13 @@ jobs:
             writeUninstaller "$INSTDIR\uninstall.exe"
             
             createDirectory "$SMPROGRAMS\${APPNAME}"
-            createShortCut "$SMPROGRAMS\${APPNAME}\${APPNAME}.lnk" "$INSTDIR\bin\cfs-spool.exe" "" "$INSTDIR\web\favicon.ico"
-            createShortCut "$DESKTOP\${APPNAME}.lnk" "$INSTDIR\bin\cfs-spool.exe" "" "$INSTDIR\web\favicon.ico"
+            createShortCut "$SMPROGRAMS\${APPNAME}\${APPNAME}.lnk" "$INSTDIR\bin\cfs-spool.exe"
+            createShortCut "$DESKTOP\${APPNAME}.lnk" "$INSTDIR\bin\cfs-spool.exe"
             
             writeRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "DisplayName" "${APPNAME}"
             writeRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "UninstallString" "$\"$INSTDIR\uninstall.exe$\""
             writeRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "QuietUninstallString" "$\"$INSTDIR\uninstall.exe$\" /S"
             writeRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "InstallLocation" "$\"$INSTDIR$\""
-            writeRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "DisplayIcon" "$\"$INSTDIR\web\favicon.ico$\""
             writeRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "Publisher" "${COMPANYNAME}"
             writeRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "HelpLink" "${HELPURL}"
             writeRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "URLUpdateInfo" "${UPDATEURL}"
