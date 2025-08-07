@@ -1,218 +1,220 @@
-# CFS Spool - Leitor/Gravador de Tags RFID Creality
+# CFS Spool - Creality RFID Tag Reader/Writer
 
-🏷️ **Sistema completo para leitura e gravação de tags RFID do Creality File System (CFS)**
+🏷️ **Complete system for reading and writing Creality File System (CFS) RFID tags**
 
-## 📋 Descrição
+[![English](https://img.shields.io/badge/lang-en-blue.svg)](README.md){:target="_blank"} [![Portuguese](https://img.shields.io/badge/lang-pt--BR-green.svg)](README.pt-BR.md){:target="_blank"}
 
-O CFS Spool é uma aplicação completa desenvolvida em Go que oferece tanto interface de linha de comando quanto interface web para interagir com tags RFID MIFARE Classic utilizadas no sistema de filamentos da Creality. A ferramenta permite ler e gravar informações de bobinas de filamento como material, cor, lote, data de fabricação e outros metadados armazenados de forma criptografada nas tags.
+## 📋 Description
 
-## ✨ Funcionalidades
+CFS Spool is a complete Go application that provides both command-line and web interfaces for interacting with MIFARE Classic RFID tags used in Creality's filament system. The tool allows reading and writing filament spool information such as material, color, batch, manufacturing date, and other metadata stored encrypted on the tags.
 
-### 🖥️ Interface Web (Principal)
-- 🎨 **Seletor visual de cores**: Paleta de 35 cores predefinidas com preview em tempo real
-- 🧠 **Lógica inteligente**: Auto-seleção de fornecedor baseado no material escolhido
-- 📝 **Preenchimento automático**: Campos opcionais com padding automático
-- 📖 **Leitura visual**: Preview das cores lidas das tags existentes
-- 🔄 **Interface responsiva**: Funciona em desktop e mobile
+## ✨ Features
 
-### 📟 CLI (Linha de Comando)
-- 📖 **Leitura de tags CFS**: Decodifica informações completas do filamento
-- ✏️ **Gravação de tags**: Programa novas tags com dados customizados
-- 🔐 **Descriptografia AES-ECB**: Suporte completo ao sistema de criptografia Creality
-- 🔧 **Modo debug**: Exibição de dados técnicos para desenvolvimento
-- 🔄 **Autenticação robusta**: Múltiplos métodos de fallback para leitura
+### 🖥️ Web Interface (Main)
+- 🎨 **Visual color selector**: 35 predefined colors palette with real-time preview
+- 🧠 **Smart logic**: Auto-selection of supplier based on chosen material
+- 📝 **Auto-fill**: Optional fields with automatic padding
+- 📖 **Visual reading**: Preview colors from existing tags
+- 🔄 **Responsive interface**: Works on desktop and mobile
 
-### 🛠️ Recursos Avançados
-- 🎯 **Derivação de chaves**: Algoritmo completo baseado no UID da tag
-- 🔒 **Compatibilidade**: Funciona com tags novas (FFFFFFFFFFFF) e usadas (chave derivada)
-- 🧪 **Ferramentas de diagnóstico**: Suite completa para troubleshooting
-- 📦 **Instaladores nativos**: DMG para macOS, AppImage para Linux, executável para Windows
+### 📟 CLI (Command Line)
+- 📖 **CFS tag reading**: Decodes complete filament information
+- ✏️ **Tag writing**: Programs new tags with custom data
+- 🔐 **AES-ECB decryption**: Full support for Creality encryption system
+- 🔧 **Debug mode**: Technical data display for development
+- 🔄 **Robust authentication**: Multiple fallback methods for reading
 
-## 🚀 Instalação
+### 🛠️ Advanced Features
+- 🎯 **Key derivation**: Complete algorithm based on tag UID
+- 🔒 **Compatibility**: Works with new tags (FFFFFFFFFFFF) and used tags (derived key)
+- 🧪 **Diagnostic tools**: Complete troubleshooting suite
+- 📦 **Native installers**: DMG for macOS, AppImage for Linux, executable for Windows
 
-### 📥 Downloads Prontos (Recomendado)
+## 🚀 Installation
 
-Baixe a versão mais recente dos instaladores nativos:
+### 📥 Ready Downloads (Recommended)
+
+Download the latest native installers:
 
 **[⬇️ Releases - GitHub](https://github.com/robertocorreajr/cfs_spool/releases/latest)**
 
-- 🍎 **macOS**: `CFS-Spool-macOS.dmg` (instalador drag-and-drop)
-- 🐧 **Linux**: `CFS-Spool-Linux.AppImage` (portável)
-- 🪟 **Windows**: `CFS-Spool-Windows.exe` (instalador)
+- 🍎 **macOS**: `CFS-Spool-macOS.dmg` (drag-and-drop installer)
+- 🐧 **Linux**: `CFS-Spool-Linux.AppImage` (portable)
+- 🪟 **Windows**: `CFS-Spool-Windows.exe` (installer)
 
-### 🛠️ Compilação Manual
+### 🛠️ Manual Compilation
 
-#### Pré-requisitos
+#### Prerequisites
 
 - **Go 1.21+**
-- **Leitor RFID compatível** (testado com ACR122U)
+- **Compatible RFID reader** (tested with ACR122U)
 - **PC/SC Smart Card Daemon** 
-  - macOS: já incluso
+  - macOS: already included
   - Linux: `sudo apt install pcscd libpcsclite-dev`
-  - Windows: driver do leitor RFID
+  - Windows: RFID reader driver
 
-#### Compilação
+#### Compilation
 
 ```bash
 git clone https://github.com/robertocorreajr/cfs_spool.git
 cd cfs_spool
 
-# Interface Web (principal)
+# Web Interface (main)
 go build -o cfs-spool-web ./cmd/app
 
-# CLI tradicional
+# Traditional CLI
 go build -o cfs-spool-cli ./cmd/cfs-spool
 ```
 
-## 📱 Uso
+## 📱 Usage
 
-### 🖥️ Interface Web (Recomendado)
+### 🖥️ Web Interface (Recommended)
 
-1. **Executar aplicação**:
+1. **Run application**:
    ```bash
    ./cfs-spool-web
-   # ou no Windows: CFS-Spool.exe
+   # or on Windows: CFS-Spool.exe
    ```
 
-2. **Acessar interface**: Navegador abre automaticamente em `http://localhost:8080`
+2. **Access interface**: Browser opens automatically at `http://localhost:8080`
 
-3. **Usar interface**:
-   - **Aba "Ler Tag"**: Coloque tag no leitor e clique "Ler Tag"
-   - **Aba "Gravar Tag"**: Preencha dados e clique "Gravar Tag"
+3. **Use interface**:
+   - **"Read Tag" tab**: Place tag on reader and click "Read Tag"
+   - **"Write Tag" tab**: Fill in data and click "Write Tag"
 
-#### 🎨 Recursos da Interface Web
+#### 🎨 Web Interface Features
 
-- **Paleta de cores**: 35 cores predefinidas com preview visual
-- **Preenchimento inteligente**: 
-  - Lote vazio → `000`
-  - Serial vazio → `000001`
-  - Auto-padding com zeros à esquerda
-- **Lógica inteligente**:
-  - Material Generic → Fornecedor Generic (automático)
-  - Material Creality → Fornecedor 1B3D (automático)
-  - Filtragem de materiais por fornecedor
+- **Color palette**: 35 predefined colors with visual preview
+- **Smart auto-fill**: 
+  - Empty batch → `000`
+  - Empty serial → `000001`
+  - Auto-padding with leading zeros
+- **Smart logic**:
+  - Generic material → Generic supplier (automatic)
+  - Creality material → 1B3D supplier (automatic)
+  - Material filtering by supplier
 
-### 📟 Interface CLI
+### 📟 CLI Interface
 
 ```bash
-# Leitura básica
+# Basic reading
 ./cfs-spool-cli read-tag
 
-# Modo debug (dados técnicos)
+# Debug mode (technical data)
 ./cfs-spool-cli read-tag -debug
 
-# Gravação de tag
+# Tag writing
 ./cfs-spool-cli write-tag -batch "1A5" -material "04001" -color "FF40130"
 ```
 
-### Exemplo de Saída
+### Output Example
 
 ```
 ╔══════════════════════════════════════════╗
-║           INFORMAÇÕES DA TAG             ║
+║           TAG INFORMATION                ║
 ╚══════════════════════════════════════════╝
-📦 Lote:        1A5
-📅 Data:        20 de Janeiro de 2024
-🏭 Fornecedor:  1B3D
-🧪 Material:    CR-PLA (padrão)
-🎨 Cor:         #77BB41 (hex)
-📏 Comprimento: 330cm (1kg de filamento)
+📦 Batch:       1A5
+📅 Date:        January 20, 2024
+🏭 Supplier:    1B3D
+🧪 Material:    CR-PLA (standard)
+🎨 Color:       #77BB41 (hex)
+📏 Length:      330cm (1kg filament)
 🔢 Serial:      000001
 ```
 
-## 🛠️ Hardware Suportado
+## 🛠️ Supported Hardware
 
-### 🛒 Hardware Recomendado (Links de Afiliados)
+### 🛒 Recommended Hardware (Affiliate Links)
 
-- **🏷️ [Leitor RFID ACR122U](https://s.click.aliexpress.com/e/_ok8qAl9)** - Leitor usado no desenvolvimento (compatibilidade garantida)
-- **📇 [Etiquetas MIFARE Classic 1K](https://s.click.aliexpress.com/e/_oBPVnEb)** - Tags compatíveis testadas no projeto
+- **🏷️ [ACR122U RFID Reader](https://s.click.aliexpress.com/e/_ok8qAl9){:target="_blank"}** - Reader used in development (compatibility guaranteed)
+- **📇 [MIFARE Classic 1K Tags](https://s.click.aliexpress.com/e/_oBPVnEb){:target="_blank"}** - Compatible tags tested in the project
 
-### Leitores RFID Testados
-- **ACR122U** ✅ (recomendado)
-- **Outros leitores PC/SC** (compatibilidade não garantida)
+### Tested RFID Readers
+- **ACR122U** ✅ (recommended)
+- **Other PC/SC readers** (compatibility not guaranteed)
 
-### Tags Suportadas
+### Supported Tags
 - **MIFARE Classic 1K** ✅
 - **MIFARE Classic 4K** ✅
-- **Tags Creality CFS** ✅
+- **Creality CFS Tags** ✅
 
-### 🔧 Desenvolvimento
+## 🔧 Development
 
-### Estrutura do Projeto
+### Project Structure
 
 ```
 cfs-spool/
 ├── cmd/
-│   ├── app/                # 🖥️ Interface Web (principal)
-│   │   └── main.go         # Servidor web com API REST
-│   ├── cfs-spool/          # 📟 CLI tradicional
-│   │   ├── main.go         # Interface de linha de comando
-│   │   └── write_tag.go    # Comandos de leitura/escrita
-│   └── web-server/         # (deprecado)
+│   ├── app/                # 🖥️ Web Interface (main)
+│   │   └── main.go         # Web server with REST API
+│   ├── cfs-spool/          # 📟 Traditional CLI
+│   │   ├── main.go         # Command line interface
+│   │   └── write_tag.go    # Read/write commands
+│   └── web-server/         # (deprecated)
 ├── internal/
-│   ├── creality/           # Lógica específica da Creality
-│   │   ├── crypto.go       # Criptografia AES-ECB
-│   │   └── fields.go       # Parsing e formatação de campos
-│   └── rfid/               # Comunicação RFID
-│       └── reader.go       # Interface PC/SC
-├── web/                    # 🎨 Frontend da interface web
-│   ├── index.html          # Interface HTML/CSS/JS
-│   └── favicon.svg         # Ícone da aplicação
-├── tests/                  # 🧪 Ferramentas de teste
-│   ├── test_auth_read.go   # Teste de autenticação
-│   ├── test_basic_read.go  # Teste de leitura básica
-│   ├── test_decode_cfs.go  # Teste de decodificação
-│   └── test_read_diagnosis.go # Diagnóstico completo
-├── assets/                 # 🎨 Recursos visuais
-│   ├── icons/              # Ícones para instaladores
-│   └── dmg-background.svg  # Fundo do instalador macOS
+│   ├── creality/           # Creality-specific logic
+│   │   ├── crypto.go       # AES-ECB cryptography
+│   │   └── fields.go       # Field parsing and formatting
+│   └── rfid/               # RFID communication
+│       └── reader.go       # PC/SC interface
+├── web/                    # 🎨 Web interface frontend
+│   ├── index.html          # HTML/CSS/JS interface
+│   └── favicon.svg         # Application icon
+├── tests/                  # 🧪 Test tools
+│   ├── test_auth_read.go   # Authentication test
+│   ├── test_basic_read.go  # Basic reading test
+│   ├── test_decode_cfs.go  # Decoding test
+│   └── test_read_diagnosis.go # Complete diagnosis
+├── assets/                 # 🎨 Visual resources
+│   ├── icons/              # Icons for installers
+│   └── dmg-background.svg  # macOS installer background
 ├── .github/workflows/      # 🚀 CI/CD
-│   └── build.yml           # Pipeline de build automático
-├── scripts/                # 📦 Scripts de release
-│   └── release.sh          # Script de empacotamento
-└── Dockerfile              # 🐳 Container Docker
+│   └── build.yml           # Automatic build pipeline
+├── scripts/                # 📦 Release scripts
+│   └── release.sh          # Packaging script
+└── Dockerfile              # 🐳 Docker container
 ```
 
-### API REST (Interface Web)
+### REST API (Web Interface)
 
-A interface web expõe uma API REST simples:
+The web interface exposes a simple REST API:
 
-- `GET /api/status` - Status da aplicação
-- `GET /api/options` - Opções para dropdowns (materiais, fornecedores, etc.)
-- `POST /api/read-tag` - Leitura de tag RFID
-- `POST /api/write` - Gravação de tag RFID
+- `GET /api/status` - Application status
+- `GET /api/options` - Options for dropdowns (materials, suppliers, etc.)
+- `POST /api/read-tag` - RFID tag reading
+- `POST /api/write` - RFID tag writing
 
-### Dependências
+### Dependencies
 
-- `github.com/ebfe/scard` - Interface PC/SC para comunicação RFID
-- `crypto/aes` - Criptografia AES (biblioteca padrão)
-- Interface web nativa (sem dependências externas)
+- `github.com/ebfe/scard` - PC/SC interface for RFID communication
+- `crypto/aes` - AES cryptography (standard library)
+- Native web interface (no external dependencies)
 
-### 🧪 Ferramentas de Diagnóstico
+### 🧪 Diagnostic Tools
 
 ```bash
-# Diagnóstico completo de leitura RFID
+# Complete RFID reading diagnosis
 go run tests/test_read_diagnosis.go
 
-# Teste de autenticação
+# Authentication test
 go run tests/test_auth_read.go
 
-# Teste de decodificação CFS
+# CFS decoding test
 go run tests/test_decode_cfs.go
 ```
 
-## 📊 Referência Técnica
+## 📊 Technical Reference
 
-### Vendors conhecidos
+### Known Vendors
 
-| **Vendor Code** | **Marca / Observação**                             |
+| **Vendor Code** | **Brand / Notes**                                  |
 |:---------------:|:--------------------------------------------------:|
-|  0x0276         | Creality • Hyper • Ender • HP (linhas oficiais)    |
-|  0xFFFF         | Genérico (qualquer fabricante não-oficial)         |
+|  0x0276         | Creality • Hyper • Ender • HP (official lines)    |
+|  0xFFFF         | Generic (any non-official manufacturer)            |
 
-### Materials conhecidos
+### Known Materials
 
-| **Material Code** | **Descrição**         |
+| **Material Code** | **Description**       |
 |:-----------------:|:---------------------:|
 |  00001            | Generic PLA           |
 |  00002            | Generic PLA-Silk      |
@@ -256,112 +258,112 @@ go run tests/test_decode_cfs.go
 |  18001            | HP Ultra PLA          |
 |  19001            | HP-ASA                |
 
-### Formato da Tag CFS
+### CFS Tag Format
 
-O sistema Creality CFS armazena dados nos setores 1-2 das tags MIFARE Classic:
+The Creality CFS system stores data in sectors 1-2 of MIFARE Classic tags:
 
-- **Setor 1 (Blocos 4-6)**: Dados criptografados do filamento
-- **Criptografia**: AES-ECB com chaves derivadas do UID
-- **Chave S1**: Derivada do UID usando chave "q3bu^t1nqfZ(pf$1"
-- **Payload**: Descriptografado com chave "H@CFkRnz@KAtBJp2"
+- **Sector 1 (Blocks 4-6)**: Encrypted filament data
+- **Encryption**: AES-ECB with UID-derived keys
+- **S1 Key**: Derived from UID using key "q3bu^t1nqfZ(pf$1"
+- **Payload**: Decrypted with key "H@CFkRnz@KAtBJp2"
 
-#### Algoritmo de Autenticação
+#### Authentication Algorithm
 
-1. **Tags novas**: Key A = `FFFFFFFFFFFF` (padrão MIFARE)
-2. **Tags usadas**: Key A = derivada do UID usando algoritmo AES
-3. **Fallback**: Múltiplas tentativas com diferentes métodos
+1. **New tags**: Key A = `FFFFFFFFFFFF` (MIFARE default)
+2. **Used tags**: Key A = derived from UID using AES algorithm
+3. **Fallback**: Multiple attempts with different methods
 
-## 🎨 Paleta de Cores Predefinidas
+## 🎨 Predefined Color Palette
 
-A interface web inclui 35 cores predefinidas baseadas no sistema Creality:
+The web interface includes 35 predefined colors based on the Creality system:
 
-| Categoria | Cores |
-|-----------|-------|
-| **Azuis** | #25C4DA, #0099A7, #0B359A, #0A4AB6, #11B6EE, #90C6F5 |
-| **Laranjas/Amarelos** | #FA7C0C, #F7B30F, #E5C20F, #B18F2E, #F8E911, #F6D311 |
-| **Marrons** | #8D766D, #6C4E43 |
-| **Vermelhos/Rosas** | #E62E2E, #EE2862, #EA2A2B, #E83D89, #AE2E65 |
-| **Roxos** | #611C8B, #8D60C7, #B287C9 |
-| **Verdes** | #006764, #018D80, #42B5AE, #1D822D, #54B351, #72E115 |
-| **Cinzas** | #474747, #668798, #B1BEC6, #58636E |
-| **Especiais** | #F2EFCE, #FFFFFF, #000000 |
+| Category | Colors |
+|----------|--------|
+| **Blues** | #25C4DA, #0099A7, #0B359A, #0A4AB6, #11B6EE, #90C6F5 |
+| **Oranges/Yellows** | #FA7C0C, #F7B30F, #E5C20F, #B18F2E, #F8E911, #F6D311 |
+| **Browns** | #8D766D, #6C4E43 |
+| **Reds/Pinks** | #E62E2E, #EE2862, #EA2A2B, #E83D89, #AE2E65 |
+| **Purples** | #611C8B, #8D60C7, #B287C9 |
+| **Greens** | #006764, #018D80, #42B5AE, #1D822D, #54B351, #72E115 |
+| **Grays** | #474747, #668798, #B1BEC6, #58636E |
+| **Special** | #F2EFCE, #FFFFFF, #000000 |
 
-## 🚀 Releases e Versioning
+## 🚀 Releases and Versioning
 
-- **v1.2.0+**: Interface web completa com paleta de cores
-- **v1.1.1**: Correção crítica na derivação de chaves
-- **v1.1.0**: Primeira versão com instaladores nativos
-- **v1.0.x**: Versões CLI básicas
+- **v1.2.0+**: Complete web interface with color palette
+- **v1.1.1**: Critical fix in key derivation
+- **v1.1.0**: First version with native installers
+- **v1.0.x**: Basic CLI versions
 
-### 📦 Sistema de Build Automático
+### 📦 Automatic Build System
 
-Cada tag `v*` gera automaticamente:
-- 🍎 Instalador DMG para macOS (com ícone customizado)
-- 🐧 AppImage portável para Linux
-- 🪟 Executável para Windows com installer
-- 🐳 Imagem Docker multi-arquitetura
+Each `v*` tag automatically generates:
+- 🍎 DMG installer for macOS (with custom icon)
+- 🐧 Portable AppImage for Linux
+- 🪟 Windows executable with installer
+- 🐳 Multi-architecture Docker image
 
 ## ❓ FAQ
 
-### Como escolher entre CLI e Interface Web?
+### How to choose between CLI and Web Interface?
 
-- **Interface Web**: Recomendada para uso geral, mais intuitiva
-- **CLI**: Ideal para automação, scripts e desenvolvimento
+- **Web Interface**: Recommended for general use, more intuitive
+- **CLI**: Ideal for automation, scripts, and development
 
-### A paleta de cores é limitada?
+### Is the color palette limited?
 
-Não! Você pode:
-- Escolher uma das 35 cores predefinidas (clique na paleta)
-- Digitar qualquer código hex manualmente no campo de texto
-- Usar o seletor de cor (clique no quadrado colorido)
+No! You can:
+- Choose one of the 35 predefined colors (click on palette)
+- Type any hex code manually in the text field
+- Use the color picker (click on the colored square)
 
-### Campos opcionais não funcionam?
+### Optional fields don't work?
 
-Os campos **Lote** e **Serial** são opcionais:
-- Lote vazio → automaticamente `000`
-- Serial vazio → automaticamente `000001`
-- Preenchimento com zeros à esquerda automático
+The **Batch** and **Serial** fields are optional:
+- Empty batch → automatically `000`
+- Empty serial → automatically `000001`
+- Automatic padding with leading zeros
 
-### Como diagnosticar problemas de leitura?
+### How to diagnose reading problems?
 
 ```bash
 go run tests/test_read_diagnosis.go
 ```
 
-Este comando testa sistematicamente todos os métodos de autenticação.
+This command systematically tests all authentication methods.
 
-## 🤝 Contribuição
+## 🤝 Contributing
 
-Contribuições são bem-vindas! Por favor:
+Contributions are welcome! Please:
 
-1. Faça um fork do projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/nova-funcionalidade`)
-3. Commit suas mudanças (`git commit -am 'Adiciona nova funcionalidade'`)
-4. Push para a branch (`git push origin feature/nova-funcionalidade`)
-5. Abra um Pull Request
+1. Fork the project
+2. Create a branch for your feature (`git checkout -b feature/new-feature`)
+3. Commit your changes (`git commit -am 'Add new feature'`)
+4. Push to the branch (`git push origin feature/new-feature`)
+5. Open a Pull Request
 
-### 🔧 Desenvolvimento Local
+### 🔧 Local Development
 
 ```bash
-# Interface Web
+# Web Interface
 go run cmd/app/main.go
 
 # CLI
 go run cmd/cfs-spool/main.go read-tag
 
-# Testes
+# Tests
 go run tests/test_read_diagnosis.go
 ```
 
-## 📄 Licença
+## 📄 License
 
-Este projeto está sob licença MIT. Veja os detalhes em cada arquivo fonte.
+This project is under MIT license. See details in each source file.
 
 ## ⚠️ Disclaimer
 
-Este projeto é desenvolvido para fins educacionais e de interoperabilidade. Não é afiliado à Creality 3D Technology Co., Ltd.
+This project is developed for educational and interoperability purposes. It is not affiliated with Creality 3D Technology Co., Ltd.
 
 ---
 
-**🏷️ CFS Spool v1.2.0+** - Sistema completo para tags RFID Creality  
-*Desenvolvido com ❤️ em Go*
+**🏷️ CFS Spool v1.2.0+** - Complete system for Creality RFID tags  
+*Developed with ❤️ in Go*
