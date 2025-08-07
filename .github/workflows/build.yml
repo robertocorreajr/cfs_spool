@@ -137,16 +137,21 @@ jobs:
         EOF
         fi
         
-        chmod +x release/cfs-spool-${{ matrix.name }}/cfs-spool-*
-        
-        # Create archive
-        cd release
-        if [[ "${{ matrix.goos }}" == "windows" ]]; then
-          zip -r ../cfs-spool-${{ matrix.name }}.zip cfs-spool-${{ matrix.name }}/
-        else
-          tar -czf ../cfs-spool-${{ matrix.name }}.tar.gz cfs-spool-${{ matrix.name }}/
-        fi
+        chmod +x release/cfs-spool-${{ matrix.name }}/cfs-spool-* 2>/dev/null || true
       shell: bash
+    
+    - name: Create archive (Unix)
+      if: matrix.goos != 'windows'
+      run: |
+        cd release
+        tar -czf ../cfs-spool-${{ matrix.name }}.tar.gz cfs-spool-${{ matrix.name }}/
+      shell: bash
+    
+    - name: Create archive (Windows)
+      if: matrix.goos == 'windows'
+      run: |
+        Compress-Archive -Path "release/cfs-spool-${{ matrix.name }}" -DestinationPath "cfs-spool-${{ matrix.name }}.zip"
+      shell: powershell
     
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
