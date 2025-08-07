@@ -105,6 +105,8 @@ jobs:
         CGO_ENABLED: 1
       run: |
         go build -ldflags "-s -w -X main.version=${{ github.ref_name }}" \
+          -o cfs-spool-app-${{ matrix.name }}${{ matrix.ext }} ./cmd/app
+        go build -ldflags "-s -w -X main.version=${{ github.ref_name }}" \
           -o cfs-spool-cli-${{ matrix.name }}${{ matrix.ext }} ./cmd/cfs-spool
         go build -ldflags "-s -w -X main.version=${{ github.ref_name }}" \
           -o cfs-spool-web-${{ matrix.name }}${{ matrix.ext }} ./cmd/web-server
@@ -124,8 +126,8 @@ jobs:
         echo "Installing CFS Spool for Linux..."
         echo "1. Install PC/SC: sudo apt-get install pcscd pcsc-tools libpcsclite1"
         echo "2. Connect your RFID reader"
-        echo "3. Run: ./cfs-spool-web-${{ matrix.name }}"
-        echo "4. Open: http://localhost:8080"
+        echo "3. Run: ./cfs-spool-app-${{ matrix.name }}"
+        echo "4. Browser will open automatically at: http://localhost:8080"
         echo "CLI usage: ./cfs-spool-cli-${{ matrix.name }} read-tag"
         EOF
           chmod +x release/cfs-spool-${{ matrix.name }}/install.sh
@@ -133,10 +135,10 @@ jobs:
           cat > release/cfs-spool-${{ matrix.name }}/install.sh << 'EOF'
         #!/bin/bash
         echo "Installing CFS Spool for macOS..."
-        echo "1. Install PC/SC: brew install pcsc-lite"
+        echo "1. Install PC/SC: brew install pcsc-lite (optional, usually included)"
         echo "2. Connect your RFID reader"
-        echo "3. Run: ./cfs-spool-web-${{ matrix.name }}"
-        echo "4. Open: http://localhost:8080"
+        echo "3. Run: ./cfs-spool-app-${{ matrix.name }}"
+        echo "4. Browser will open automatically at: http://localhost:8080"
         echo "CLI usage: ./cfs-spool-cli-${{ matrix.name }} read-tag"
         EOF
           chmod +x release/cfs-spool-${{ matrix.name }}/install.sh
@@ -146,8 +148,8 @@ jobs:
         echo Installing CFS Spool for Windows...
         echo 1. Install PC/SC drivers for your RFID reader
         echo 2. Connect your RFID reader
-        echo 3. Run: cfs-spool-web-${{ matrix.name }}.exe
-        echo 4. Open: http://localhost:8080
+        echo 3. Run: cfs-spool-app-${{ matrix.name }}.exe
+        echo 4. Browser will open automatically at: http://localhost:8080
         echo CLI usage: cfs-spool-cli-${{ matrix.name }}.exe read-tag
         EOF
         fi
@@ -174,8 +176,266 @@ jobs:
         name: cfs-spool-${{ matrix.name }}
         path: cfs-spool-${{ matrix.name }}.zip
 
-  release:
+  build-native-installers:
     needs: build
+    runs-on: ${{ matrix.os }}
+    if: startsWith(github.ref, 'refs/tags/v')
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            platform: macos
+            installer_type: dmg
+          - os: ubuntu-latest
+            platform: linux
+            installer_type: appimage
+          - os: windows-latest
+            platform: windows
+            installer_type: exe
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download platform artifacts
+      uses: actions/download-artifact@v4
+      with:
+        pattern: cfs-spool-${{ matrix.platform }}-*
+        path: artifacts
+        merge-multiple: true
+    
+    - name: Prepare installer workspace
+      run: |
+        mkdir -p installer-workspace
+        find artifacts -name "*.zip" | head -1 | xargs -I {} unzip {} -d installer-workspace/
+        ls -la installer-workspace/
+    
+    # macOS DMG Creation
+    - name: Create macOS DMG
+      if: matrix.platform == 'macos'
+      run: |
+        # Install create-dmg
+        brew install create-dmg
+        
+        # Create app bundle structure
+        mkdir -p "CFS Spool.app/Contents/MacOS"
+        mkdir -p "CFS Spool.app/Contents/Resources"
+        
+        # Copy binaries
+        find installer-workspace -name "cfs-spool-app-*" ! -name "*.zip" | head -1 | xargs -I {} cp {} "CFS Spool.app/Contents/MacOS/cfs-spool"
+        find installer-workspace -name "cfs-spool-cli-*" ! -name "*.zip" | head -1 | xargs -I {} cp {} "CFS Spool.app/Contents/MacOS/cfs-spool-cli"
+        
+        # Copy web assets
+        cp -r installer-workspace/*/web "CFS Spool.app/Contents/Resources/"
+        
+        # Create Info.plist
+        cat > "CFS Spool.app/Contents/Info.plist" << 'EOF'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>CFBundleExecutable</key>
+            <string>cfs-spool</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.creality.cfs-spool</string>
+            <key>CFBundleName</key>
+            <string>CFS Spool</string>
+            <key>CFBundleVersion</key>
+            <string>${{ github.ref_name }}</string>
+            <key>CFBundleShortVersionString</key>
+            <string>${{ github.ref_name }}</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>LSUIElement</key>
+            <true/>
+            <key>NSHighResolutionCapable</key>
+            <true/>
+        </dict>
+        </plist>
+        EOF
+        
+        # Make executable
+        chmod +x "CFS Spool.app/Contents/MacOS/cfs-spool"
+        chmod +x "CFS Spool.app/Contents/MacOS/cfs-spool-cli"
+        
+        # Create DMG
+        create-dmg \
+          --volname "CFS Spool ${{ github.ref_name }}" \
+          --volicon "CFS Spool.app/Contents/Resources/web/favicon.ico" \
+          --window-pos 200 120 \
+          --window-size 600 400 \
+          --icon-size 100 \
+          --icon "CFS Spool.app" 175 190 \
+          --hide-extension "CFS Spool.app" \
+          --app-drop-link 425 190 \
+          "cfs-spool-${{ github.ref_name }}.dmg" \
+          "CFS Spool.app"
+    
+    # Linux AppImage Creation
+    - name: Create Linux AppImage
+      if: matrix.platform == 'linux'
+      run: |
+        # Install dependencies
+        sudo apt-get update
+        sudo apt-get install -y wget file
+        
+        # Download linuxdeploy and AppImageTool
+        wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+        chmod +x linuxdeploy-x86_64.AppImage
+        
+        # Create AppDir structure
+        mkdir -p AppDir/usr/bin
+        mkdir -p AppDir/usr/share/applications
+        mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+        mkdir -p AppDir/usr/share/cfs-spool
+        
+        # Copy binaries
+        find installer-workspace -name "cfs-spool-app-*" ! -name "*.zip" | head -1 | xargs -I {} cp {} AppDir/usr/bin/cfs-spool
+        find installer-workspace -name "cfs-spool-cli-*" ! -name "*.zip" | head -1 | xargs -I {} cp {} AppDir/usr/bin/cfs-spool-cli
+        
+        # Copy web assets
+        cp -r installer-workspace/*/web AppDir/usr/share/cfs-spool/
+        
+        # Create desktop file
+        cat > AppDir/usr/share/applications/cfs-spool.desktop << 'EOF'
+        [Desktop Entry]
+        Type=Application
+        Name=CFS Spool
+        Comment=Creality CFS RFID Tag Reader
+        Exec=cfs-spool
+        Icon=cfs-spool
+        Categories=Utility;
+        Terminal=false
+        EOF
+        
+        # Create simple icon (text-based)
+        cat > AppDir/usr/share/icons/hicolor/256x256/apps/cfs-spool.svg << 'EOF'
+        <svg width="256" height="256" xmlns="http://www.w3.org/2000/svg">
+          <rect width="256" height="256" fill="#1976d2"/>
+          <text x="128" y="140" font-family="Arial" font-size="48" fill="white" text-anchor="middle">CFS</text>
+        </svg>
+        EOF
+        
+        # Make executable
+        chmod +x AppDir/usr/bin/cfs-spool
+        chmod +x AppDir/usr/bin/cfs-spool-cli
+        
+        # Create AppImage
+        ./linuxdeploy-x86_64.AppImage --appdir AppDir --output appimage
+        
+        # Rename to proper name
+        mv CFS_Spool*.AppImage "cfs-spool-${{ github.ref_name }}.AppImage" || mv *.AppImage "cfs-spool-${{ github.ref_name }}.AppImage"
+    
+    # Windows Installer Creation
+    - name: Create Windows Installer
+      if: matrix.platform == 'windows'
+      run: |
+        # Install NSIS
+        choco install nsis -y
+        
+        # Create installer directory structure
+        mkdir -p installer/bin
+        mkdir -p installer/web
+        
+        # Copy files
+        Get-ChildItem installer-workspace -Recurse -Name "cfs-spool-app-*.exe" | ForEach-Object { Copy-Item "installer-workspace/$_" "installer/bin/cfs-spool.exe" }
+        Get-ChildItem installer-workspace -Recurse -Name "cfs-spool-cli-*.exe" | ForEach-Object { Copy-Item "installer-workspace/$_" "installer/bin/cfs-spool-cli.exe" }
+        Copy-Item -Recurse installer-workspace/*/web/* installer/web/
+        
+        # Create NSIS script
+        @"
+        !define APPNAME "CFS Spool"
+        !define COMPANYNAME "Creality"
+        !define DESCRIPTION "Creality CFS RFID Tag Reader"
+        !define VERSIONMAJOR 1
+        !define VERSIONMINOR 0
+        !define VERSIONBUILD 0
+        !define HELPURL "https://github.com/robertocorreajr/cfs_spool"
+        !define UPDATEURL "https://github.com/robertocorreajr/cfs_spool/releases"
+        !define ABOUTURL "https://github.com/robertocorreajr/cfs_spool"
+        !define INSTALLSIZE 50000
+        
+        RequestExecutionLevel admin
+        InstallDir "$PROGRAMFILES\${APPNAME}"
+        Name "${APPNAME}"
+        Icon "installer\web\favicon.ico"
+        outFile "cfs-spool-${{ github.ref_name }}-installer.exe"
+        
+        !include LogicLib.nsh
+        
+        page components
+        page directory
+        page instfiles
+        
+        !macro VerifyUserIsAdmin
+        UserInfo::GetAccountType
+        pop $0
+        ${If} $0 != "admin"
+            messageBox MB_ICONSTOP "Administrator rights required!"
+            setErrorLevel 740
+            quit
+        ${EndIf}
+        !macroend
+        
+        function .onInit
+            setShellVarContext all
+            !insertmacro VerifyUserIsAdmin
+        functionEnd
+        
+        section "install"
+            setOutPath $INSTDIR
+            file /r "installer\*"
+            
+            writeUninstaller "$INSTDIR\uninstall.exe"
+            
+            createDirectory "$SMPROGRAMS\${APPNAME}"
+            createShortCut "$SMPROGRAMS\${APPNAME}\${APPNAME}.lnk" "$INSTDIR\bin\cfs-spool.exe" "" "$INSTDIR\web\favicon.ico"
+            createShortCut "$DESKTOP\${APPNAME}.lnk" "$INSTDIR\bin\cfs-spool.exe" "" "$INSTDIR\web\favicon.ico"
+            
+            writeRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "DisplayName" "${APPNAME}"
+            writeRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "UninstallString" "$\"$INSTDIR\uninstall.exe$\""
+            writeRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "QuietUninstallString" "$\"$INSTDIR\uninstall.exe$\" /S"
+            writeRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "InstallLocation" "$\"$INSTDIR$\""
+            writeRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "DisplayIcon" "$\"$INSTDIR\web\favicon.ico$\""
+            writeRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "Publisher" "${COMPANYNAME}"
+            writeRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "HelpLink" "${HELPURL}"
+            writeRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "URLUpdateInfo" "${UPDATEURL}"
+            writeRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "URLInfoAbout" "${ABOUTURL}"
+            writeRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "DisplayVersion" "${VERSIONMAJOR}.${VERSIONMINOR}.${VERSIONBUILD}"
+            writeRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "VersionMajor" ${VERSIONMAJOR}
+            writeRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "VersionMinor" ${VERSIONMINOR}
+            writeRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "NoModify" 1
+            writeRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "NoRepair" 1
+            writeRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "EstimatedSize" ${INSTALLSIZE}
+        sectionEnd
+        
+        section "uninstall"
+            delete "$SMPROGRAMS\${APPNAME}\${APPNAME}.lnk"
+            delete "$DESKTOP\${APPNAME}.lnk"
+            rmDir "$SMPROGRAMS\${APPNAME}"
+            
+            delete $INSTDIR\uninstall.exe
+            rmDir /r $INSTDIR
+            
+            deleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}"
+        sectionEnd
+        "@ | Out-File -FilePath installer.nsi -Encoding ASCII
+        
+        # Build installer
+        & "C:\Program Files (x86)\NSIS\makensis.exe" installer.nsi
+      shell: powershell
+    
+    - name: Upload native installer
+      uses: actions/upload-artifact@v4
+      with:
+        name: native-installer-${{ matrix.platform }}
+        path: |
+          *.dmg
+          *.AppImage
+          *-installer.exe
+
+  release:
+    needs: [build, build-native-installers]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     
@@ -190,9 +450,17 @@ jobs:
     - name: Organize release files
       run: |
         mkdir -p release-files
+        
+        # ZIP packages
         find artifacts -name "*.zip" | while read file; do
           cp "$file" release-files/
         done
+        
+        # Native installers
+        find artifacts -name "*.dmg" -o -name "*.AppImage" -o -name "*-installer.exe" | while read file; do
+          cp "$file" release-files/
+        done
+        
         ls -la release-files/
     
     - name: Create Release
@@ -204,7 +472,28 @@ jobs:
         body: |
           ## 🎉 CFS Spool ${{ github.ref_name }}
           
-          ### 📦 Downloads por Plataforma (todos em .zip)
+          ### 📦 Instaladores Nativos (Recomendado para usuários finais)
+          
+          #### 🍎 macOS
+          - **macOS Universal**: `cfs-spool-${{ github.ref_name }}.dmg` 
+            - Arraste para Applications
+            - Execute "CFS Spool"
+            - Acesse: http://localhost:8080
+          
+          #### 🐧 Linux  
+          - **Linux Portable**: `cfs-spool-${{ github.ref_name }}.AppImage`
+            - `chmod +x cfs-spool-*.AppImage`
+            - `./cfs-spool-*.AppImage`
+            - Acesse: http://localhost:8080
+          
+          #### 🪟 Windows
+          - **Windows Installer**: `cfs-spool-${{ github.ref_name }}-installer.exe`
+            - Execute como Administrador
+            - Siga o assistente de instalação
+            - Atalho criado na Área de Trabalho
+            - Acesse: http://localhost:8080
+          
+          ### 📦 Pacotes ZIP (Para desenvolvedores)
           
           #### 🐧 Linux
           - **Linux 64-bit**: `cfs-spool-linux-amd64.zip`
@@ -216,21 +505,36 @@ jobs:
           #### 🪟 Windows
           - **Windows 64-bit**: `cfs-spool-windows-amd64.zip`
           
-          ### 🚀 Quick Start
+          ### 🚀 Quick Start (Instaladores Nativos)
           
-          #### Linux/macOS:
-          1. Download e extraia o pacote da sua plataforma
-          2. Execute o script de instalação: `./install.sh`
+          #### 🍎 macOS:
+          1. Download: `cfs-spool-${{ github.ref_name }}.dmg`
+          2. Abra o DMG e arraste "CFS Spool" para Applications
           3. Conecte seu leitor RFID ACR122U
-          4. Execute: `./cfs-spool-web-[platform]`
-          5. Abra: http://localhost:8080
+          4. Execute "CFS Spool" pelo Launchpad
+          5. Acesse: http://localhost:8080
           
-          #### Windows:
-          1. Download e extraia: `cfs-spool-windows-amd64.zip`
-          2. Execute: `install.bat` para ver instruções
+          #### 🐧 Linux:
+          1. Download: `cfs-spool-${{ github.ref_name }}.AppImage`
+          2. `chmod +x cfs-spool-*.AppImage`
           3. Conecte seu leitor RFID ACR122U
-          4. Execute: `cfs-spool-web-windows-amd64.exe`
-          5. Abra: http://localhost:8080
+          4. Execute: `./cfs-spool-*.AppImage`
+          5. Acesse: http://localhost:8080
+          
+          #### 🪟 Windows:
+          1. Download: `cfs-spool-${{ github.ref_name }}-installer.exe`
+          2. Execute como Administrador
+          3. Siga o assistente de instalação
+          4. Conecte seu leitor RFID ACR122U
+          5. Execute "CFS Spool" pelo atalho da Área de Trabalho
+          6. Acesse: http://localhost:8080
+          
+          ### ⚙️ Pré-requisitos
+          
+          - **RFID Reader**: ACR122U ou compatível
+          - **Windows**: Drivers PC/SC automáticos
+          - **macOS**: PC/SC incluído no sistema
+          - **Linux**: `sudo apt install pcscd pcsc-tools`
           
           ### 🆘 Support
           
