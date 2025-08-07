@@ -2,7 +2,8 @@
 
 🏷️ **Complete system for reading and writing Creality File System (CFS) RFID tags**
 
-[![English](https://img.shields.io/badge/lang-en-blue.svg)](README.md){:target="_blank"} [![Portuguese](https://img.shields.io/badge/lang-pt--BR-green.svg)](README.pt-BR.md){:target="_blank"}
+[![English](https://img.shields.io/badge/lang-en-blue.svg)](README.md)
+[![Portuguese](https://img.shields.io/badge/lang-pt--BR-green.svg)](README.pt-BR.md)
 
 ## 📋 Description
 
