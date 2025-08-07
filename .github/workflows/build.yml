@@ -39,6 +39,7 @@ jobs:
       run: |
         CGO_ENABLED=1 go build -v ./cmd/cfs-spool
         CGO_ENABLED=1 go build -v ./cmd/web-server
+        CGO_ENABLED=1 go build -v ./cmd/app
 
   build:
     needs: test
@@ -187,12 +188,15 @@ jobs:
           - os: macos-latest
             platform: macos
             installer_type: dmg
+            artifact_pattern: "cfs-spool-macos*"
           - os: ubuntu-latest
             platform: linux
             installer_type: appimage
+            artifact_pattern: "cfs-spool-linux*"
           - os: windows-latest
             platform: windows
             installer_type: exe
+            artifact_pattern: "cfs-spool-windows*"
     
     steps:
     - uses: actions/checkout@v4
@@ -200,7 +204,7 @@ jobs:
     - name: Download platform artifacts
       uses: actions/download-artifact@v4
       with:
-        pattern: cfs-spool-${{ matrix.platform }}-*
+        pattern: ${{ matrix.artifact_pattern }}
         path: artifacts
         merge-multiple: true
     
