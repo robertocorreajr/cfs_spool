@@ -513,26 +513,23 @@
         function filterMaterialsBySupplier() {
             const supplier = document.getElementById('supplier').value;
             const materialSelect = document.getElementById('material');
-            
+
             // Limpar seleção atual
             materialSelect.value = '';
-            
+
             // Remover todas as opções exceto a primeira
             while (materialSelect.children.length > 1) {
                 materialSelect.removeChild(materialSelect.lastChild);
             }
-            
-            // Filtrar materiais
+
+            // Filtrar materiais pelo campo brand
             let filteredMaterials = options.materials;
-            
-            if (supplier === '1B3D') { // Creality
-                // Mostrar apenas materiais não-Generic
-                filteredMaterials = options.materials.filter(m => !m.name.startsWith('Generic'));
-            } else if (supplier === 'FFFF') { // Generic
-                // Mostrar apenas materiais Generic
-                filteredMaterials = options.materials.filter(m => m.name.startsWith('Generic'));
+            if (supplier === '0276') { // Creality
+                filteredMaterials = options.materials.filter(m => m.brand === 'Creality');
+            } else if (supplier === '0000') { // Genérico
+                filteredMaterials = options.materials.filter(m => m.brand === 'Generic');
             }
-            
+
             // Repopular com materiais filtrados
             filteredMaterials.forEach(item => {
                 const option = document.createElement('option');
@@ -546,19 +543,23 @@
         function autoSelectSupplierFromMaterial() {
             const material = document.getElementById('material').value;
             const supplierSelect = document.getElementById('supplier');
-            
+
             if (!material) return;
-            
+
             // Encontrar o material selecionado
             const selectedMaterial = options.materials.find(m => m.code === material);
-            
+
             if (selectedMaterial) {
-                if (selectedMaterial.name.startsWith('Generic')) {
-                    supplierSelect.value = 'FFFF'; // Generic
-                } else {
-                    supplierSelect.value = '1B3D'; // Creality
+                if (selectedMaterial.brand === 'Generic') {
+                    supplierSelect.value = '0000'; // Genérico
+                } else if (selectedMaterial.brand === 'Creality') {
+                    supplierSelect.value = '0276'; // Creality
                 }
-                
+            }
+            // Atualizar lista de materiais baseado no fornecedor
+            filterMaterialsBySupplier();
+            // Reselecionar o material
+            document.getElementById('material').value = material;
                 // Atualizar lista de materiais baseado no fornecedor
                 filterMaterialsBySupplier();
                 // Reselecionar o material

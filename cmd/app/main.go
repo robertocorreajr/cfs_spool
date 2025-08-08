@@ -65,8 +65,10 @@ type OptionsResponse struct {
 }
 
 type MaterialOption struct {
-	Code string `json:"code"`
-	Name string `json:"name"`
+Code  string `json:"code"`
+Name  string `json:"name"`
+Brand string `json:"brand"`
+Type  string `json:"type"`
 }
 
 type VendorOption struct {
@@ -173,27 +175,30 @@ func optionsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	materials := []MaterialOption{
-		{"00001", "Generic PLA"},
-		{"00002", "Generic PLA-Silk"},
-		{"00003", "Generic PETG"},
-		{"00004", "Generic ABS"},
-		{"00005", "Generic TPU"},
-		{"00006", "Generic PLA-CF"},
-		{"00007", "Generic ASA"},
-		{"04001", "CR-PLA"},
-		{"05001", "CR-Silk"},
-		{"06001", "CR-PETG"},
-		{"07001", "CR-ABS"},
-		{"08001", "Ender-PLA"},
-		{"09001", "EN-PLA+"},
-		{"10001", "HP-TPU"},
-		{"11001", "CR-Nylon"},
-	}
+	   materials := []MaterialOption{
+		   {"01001", "Hyper PLA", "Creality", "PLA"},
+		   {"02001", "Hyper PLA-CF", "Creality", "PLA-CF"},
+		   {"06002", "Hyper PETG", "Creality", "PETG"},
+		   {"03001", "Hyper ABS", "Creality", "ABS"},
+		   {"09002", "ENDER FAST PLA", "Creality", "PLA"},
+		   {"04001", "CR-PLA", "Creality", "PLA"},
+		   {"05001", "CR-Silk", "Creality", "PLA"},
+		   {"06001", "CR-PETG", "Creality", "PETG"},
+		   {"07001", "CR-ABS", "Creality", "ABS"},
+		   {"08001", "Ender-PLA", "Creality", "PLA"},
+		   {"09001", "EN-PLA+", "Creality", "PLA"},
+		   {"00001", "Generic PLA", "Generic", "PLA"},
+		   {"00002", "Generic PLA-Silk", "Generic", "PLA"},
+		   {"00003", "Generic PETG", "Generic", "PETG"},
+		   {"00004", "Generic ABS", "Generic", "ABS"},
+		   {"00005", "Generic TPU", "Generic", "TPU"},
+		   {"00006", "Generic PLA-CF", "Generic", "PLA-CF"},
+		   {"00007", "Generic ASA", "Generic", "ASA"},
+	   }
 
 	vendors := []VendorOption{
-		{"1B3D", "Creality"},
-		{"FFFF", "Genérico"},
+		{"0276", "Creality"},
+		{"0000", "Genérico"},
 	}
 
 	lengths := []LengthOption{
