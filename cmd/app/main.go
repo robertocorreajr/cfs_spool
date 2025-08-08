@@ -1,3 +1,8 @@
+// CFS Spool - Gravador/Leitor de Tags RFID para filamentos Creality
+// Este aplicativo permite ler e gravar informações em tags RFID compatíveis com
+// as impressoras 3D da Creality, incluindo dados como tipo de material, lote,
+// comprimento e outras informações relevantes para o filamento.
+
 package main
 
 import (
