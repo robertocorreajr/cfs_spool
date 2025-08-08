@@ -3,6 +3,7 @@ package creality
 import (
 	"errors"
 	"fmt"
+	"strings"
 )
 
 // tamanhos em bytes ASCII
@@ -86,6 +87,18 @@ func (f Fields) ASCIIConcat() (string, error) {
 		fields.Color, fields.Length, fields.Serial, fields.Reserve), nil
 }
 
+// ASCIIConcat48 gera payload de 48 bytes (38 dados + 10 padding) para compatibilidade
+func (f Fields) ASCIIConcat48() (string, error) {
+	// Obter payload de 38 bytes
+	payload38, err := f.ASCIIConcat()
+	if err != nil {
+		return "", err
+	}
+	
+	// Adicionar 10 bytes de padding com zeros
+	return payload38 + "0000000000", nil
+}
+
 // ParseFields extrai os campos de uma string ASCII de 38 bytes
 func ParseFields(ascii38 string) (Fields, error) {
 	if len(ascii38) != 38 {
@@ -105,6 +118,32 @@ func ParseFields(ascii38 string) (Fields, error) {
 	}
 
 	return fields, nil
+}
+
+// ParseFieldsCompat extrai os campos com compatibilidade para formatos antigos
+func ParseFieldsCompat(data string) (Fields, error) {
+	// Se tem exatamente 38 bytes, usar formato novo
+	if len(data) == 38 {
+		return ParseFields(data)
+	}
+	
+	// Se tem 48 bytes, é formato antigo - extrair apenas os primeiros 38 bytes
+	if len(data) == 48 {
+		return ParseFields(data[:38])
+	}
+	
+	// Se tem menos de 38 bytes, completar com zeros
+	if len(data) < 38 {
+		padded := data + strings.Repeat("0", 38-len(data))
+		return ParseFields(padded)
+	}
+	
+	// Se tem mais de 48 bytes, truncar para 38
+	if len(data) > 48 {
+		return ParseFields(data[:38])
+	}
+	
+	return Fields{}, fmt.Errorf("tamanho de dados não suportado: %d bytes", len(data))
 }
 
 // String retorna uma representação legível dos campos

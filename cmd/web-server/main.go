@@ -129,7 +129,7 @@ func readTagHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.Method != "GET" {
+	if r.Method != "GET" && r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
@@ -198,8 +198,8 @@ func readTagHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parsear campos
-	fields, err := creality.ParseFields(decrypted)
+	// Parsear campos com compatibilidade para formatos antigos
+	fields, err := creality.ParseFieldsCompat(decrypted)
 	if err != nil {
 		response := ReadResponse{
 			Success: false,
@@ -318,8 +318,8 @@ func writeTagHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Validar e criar payload (valores fixos são aplicados automaticamente)
-	payload, err := fields.ASCIIConcat()
+	// Validar e criar payload de 48 bytes (38 dados + 10 padding)
+	payload, err := fields.ASCIIConcat48()
 	if err != nil {
 		response := WriteResponse{
 			Success: false,
