@@ -111,7 +111,7 @@ func main() {
 	// API endpoints
 	mux.HandleFunc("/api/status", statusHandler)
 	mux.HandleFunc("/api/options", optionsHandler)
-	mux.HandleFunc("/api/read-tag", readTagHandler)
+	mux.HandleFunc("/api/read", readTagHandler)
 	mux.HandleFunc("/api/write", writeTagHandler)
 
 	server := &http.Server{

@@ -39,7 +39,6 @@ jobs:
       run: |
         CGO_ENABLED=1 go build -v ./cmd/cfs-spool
         CGO_ENABLED=1 go build -v ./cmd/web-server
-        CGO_ENABLED=1 go build -v ./cmd/app
 
   build:
     needs: test
