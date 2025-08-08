@@ -21,10 +21,23 @@ jobs:
       - name: Check for code changes
         id: check_changes
         run: |
-          # List changed files excluding ignored paths
-          changes=$(git diff --name-only HEAD^ HEAD | grep -vE '\.(md|gitignore)$' | grep -vE '^\.github/')
+          # Ensure we have the last tag
+          git fetch --tags origin
+          
+          # Get the last tag
+          last_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          
+          if [ -n "$last_tag" ]; then
+            # List changed files since last tag
+            changes=$(git diff --name-only "$last_tag" HEAD | grep -vE '\.(md|gitignore)$' | grep -vE '^\.github/')
+          else
+            # First tag - consider all files
+            changes=$(git ls-files | grep -vE '\.(md|gitignore)$' | grep -vE '^\.github/')
+          fi
+          
           if [ -n "$changes" ]; then
-            echo "Has code changes"
+            echo "Has code changes:"
+            echo "$changes"
             echo "has_changes=true" >> $GITHUB_OUTPUT
           else
             echo "No code changes"
@@ -61,7 +74,11 @@ jobs:
           echo "Creating tag $new_version..."
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          changelog=$(git log --pretty=format:'%s' $(git describe --tags --abbrev=0)..HEAD)
+          last_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -n "$last_tag" ]; then
+            changelog=$(git log --pretty=format:'- %s' "$last_tag"..HEAD)
+          else
+            changelog=$(git log --pretty=format:'- %s')
           message="Release $new_version
 
           🔄 Alterações desde a última versão:
