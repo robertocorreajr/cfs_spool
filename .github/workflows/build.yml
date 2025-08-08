@@ -106,7 +106,7 @@ jobs:
         CGO_ENABLED: 1
       run: |
         go build -ldflags "-s -w -X main.version=${{ github.ref_name }}" \
-          -o cfs-spool-app-${{ matrix.name }}${{ matrix.ext }} ./cmd/app
+          -o cfs-spool-app-${{ matrix.name }}${{ matrix.ext }} ./cmd/web-server
         go build -ldflags "-s -w -X main.version=${{ github.ref_name }}" \
           -o cfs-spool-cli-${{ matrix.name }}${{ matrix.ext }} ./cmd/cfs-spool
         go build -ldflags "-s -w -X main.version=${{ github.ref_name }}" \
