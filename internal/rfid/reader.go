@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/ebfe/scard"
+	"github.com/robertocorreajr/cfs_spool/internal/creality"
 )
 
 const (
@@ -178,18 +179,30 @@ func (r *Reader) WriteTagCFS(uid string, blocksToWrite []string, encrypted bool)
 	var key string
 	var isNewTag bool
 	
-	// Testar se é tag nova (key padrão no setor 1)
-	err := r.testAuthentication(4, "FFFFFFFFFFFF")
+	// Derivar a chave do UID primeiro
+	derivedKey := r.DeriveKeyFromUID(uid)
+	fmt.Printf("🔑 Chave derivada do UID %s: %s\n", uid, derivedKey)
+
+	// Primeiro tentar autenticar com a chave derivada
+	err := r.testAuthentication(4, derivedKey)
 	if err == nil {
-		// Tag nova - usar key padrão
-		key = "FFFFFFFFFFFF"
-		isNewTag = true
-		fmt.Println("🆕 Tag detectada como NOVA (usando FFFFFFFFFFFF)")
-	} else {
-		// Tag usada - usar key derivada do UID
-		key = r.DeriveKeyFromUID(uid)
+		key = derivedKey
 		isNewTag = false
 		fmt.Printf("🔄 Tag detectada como USADA (usando key derivada: %s)\n", key)
+	} else {
+		// Se falhar, tentar com a chave padrão
+		err = r.testAuthentication(4, "FFFFFFFFFFFF")
+		if err == nil {
+			key = "FFFFFFFFFFFF"
+			isNewTag = true
+			fmt.Println("🆕 Tag detectada como NOVA (usando FFFFFFFFFFFF)")
+		} else {
+			// Se ambas falharem, usar a chave derivada mesmo assim
+			// porque a tag pode estar usando uma chave antiga
+			key = derivedKey
+			isNewTag = false
+			fmt.Printf("⚠️ Autenticação falhou, usando key derivada: %s\n", key)
+		}
 	}
 	
 	// Escrever blocos 4, 5, 6
@@ -211,14 +224,18 @@ func (r *Reader) WriteTagCFS(uid string, blocksToWrite []string, encrypted bool)
 	// IMPORTANTE: A impressora Creality só reconhece tags com key derivada no trailer
 	if isNewTag {
 		derivedKey := r.DeriveKeyFromUID(uid)
-		fmt.Printf("� Atualizando trailer para compatibilidade Creality (key: %s)\n", derivedKey)
+		fmt.Printf("🔑 Atualizando trailer para compatibilidade Creality (key: %s)\n", derivedKey)
 		
-		// Access bits seguros baseados no padrão MIFARE Classic
-		// FF0780xx onde xx varia, mas 69 é comum em tags Creality
-		// Vamos usar o padrão mais permissivo: FF078069
-		trailer := derivedKey + "FF078069" + derivedKey // KeyA + Access + GPB + KeyB
+		// Access bits baseados no padrão da Creality
+		// 78 77 88 69 = 0111 1000 0111 0111 1000 1000 0110 1001
+		//    Setor 1 (blocos 4-7):
+		//    - Bloco 4-6: Read A|B, Write A|B
+		//    - Bloco 7 (trailer): Read KeyA: Never, Write KeyA: A, Access Bits: A, 
+		//                         Read KeyB: Never, Write KeyB: Never
+		trailer := derivedKey + "787788" + "69" + derivedKey // KeyA + Access + GPB + KeyB
 		
-		fmt.Printf("🔑 Trailer que será gravado: %s\n", trailer)
+		// Neste caso, usamos a mesma chave derivada tanto para KeyA quanto para KeyB
+		// para manter a compatibilidade máxima com a impressora		fmt.Printf("🔑 Trailer que será gravado: %s\n", trailer)
 		
 		err := r.WriteBlockDirectly(7, key, trailer) // Usar key atual (FFFFFFFFFFFF) para escrever
 		if err != nil {
@@ -232,54 +249,75 @@ func (r *Reader) WriteTagCFS(uid string, blocksToWrite []string, encrypted bool)
 
 // WriteBlockDirectly escreve um bloco usando Load Key + Authenticate + Write
 func (r *Reader) WriteBlockDirectly(block byte, keyHex, dataHex string) error {
-	// 1. Load Key no slot 0
-	keyBytes, err := hex.DecodeString(keyHex)
-	if err != nil || len(keyBytes) != 6 {
-		return errors.New("key deve ter 12 hex chars válidos")
+	// Obter UID da tag
+	uid, _ := r.UID() // Ignorar erro pois não é crítico
+	// Lista de chaves para tentar
+	derivedKey := r.DeriveKeyFromUID(uid) // Tentar pegar o UID do bloco 0
+	keys := []string{
+		keyHex,             // A chave principal passada
+		derivedKey,         // A chave derivada do UID
+		"FFFFFFFFFFFF",     // A chave padrão
 	}
 	
-	cmd := append([]byte{0xFF, 0x82, 0x00, 0x00, 0x06}, keyBytes...)
-	resp, err := r.transmit(cmd)
-	if err != nil || len(resp) < 2 || resp[len(resp)-2] != 0x90 {
-		return fmt.Errorf("falha ao carregar key: %v", err)
-	}
-	
-	// 2. Tentar authenticate com Key Type A primeiro, depois B
-	var authSuccess bool
-	var keyType byte = KeyTypeA
-	
-	authCmd := []byte{0xFF, 0x86, 0x00, 0x00, 0x05, 0x01, 0x00, block, keyType, 0x00}
-	resp, err = r.transmit(authCmd)
-	if err != nil || len(resp) < 2 || resp[len(resp)-2] != 0x90 {
-		// Tentar com Key Type B
-		keyType = KeyTypeB
-		authCmd = []byte{0xFF, 0x86, 0x00, 0x00, 0x05, 0x01, 0x00, block, keyType, 0x00}
-		resp, err = r.transmit(authCmd)
-		if err != nil || len(resp) < 2 || resp[len(resp)-2] != 0x90 {
-			return fmt.Errorf("falha na autenticação do bloco %d (A e B): %v", block, err)
+	// Remover duplicatas
+	uniqueKeys := make([]string, 0)
+	seen := make(map[string]bool)
+	for _, key := range keys {
+		if !seen[key] {
+			seen[key] = true
+			uniqueKeys = append(uniqueKeys, key)
 		}
-		authSuccess = true
-	} else {
-		authSuccess = true
 	}
 	
-	if !authSuccess {
-		return fmt.Errorf("falha na autenticação do bloco %d", block)
+	var lastErr error
+	for _, key := range keys {
+		// 1. Load Key no slot 0
+		keyBytes, err := hex.DecodeString(key)
+		if err != nil || len(keyBytes) != 6 {
+			lastErr = errors.New("key deve ter 12 hex chars válidos")
+			continue
+		}
+		
+		cmd := append([]byte{0xFF, 0x82, 0x00, 0x00, 0x06}, keyBytes...)
+		resp, err := r.transmit(cmd)
+		if err != nil || len(resp) < 2 || resp[len(resp)-2] != 0x90 {
+			lastErr = fmt.Errorf("falha ao carregar key %s: %v", key, err)
+			continue
+		}
+		
+		// 2. Tentar authenticate com Key Type A primeiro, depois B
+		var authSuccess bool
+		for _, keyType := range []byte{KeyTypeA, KeyTypeB} {
+			authCmd := []byte{0xFF, 0x86, 0x00, 0x00, 0x05, 0x01, 0x00, block, keyType, 0x00}
+			resp, err = r.transmit(authCmd)
+			if err == nil && len(resp) >= 2 && resp[len(resp)-2] == 0x90 {
+				authSuccess = true
+				break
+			}
+		}
+		
+		if !authSuccess {
+			lastErr = fmt.Errorf("falha na autenticação do bloco %d com key %s", block, key)
+			continue
+		}
+		
+		// 3. Write block
+		data, err := hex.DecodeString(dataHex)
+		if err != nil || len(data) != 16 {
+			return errors.New("dados devem ter 32 hex chars")
+		}
+		
+		writeCmd := append([]byte{0xFF, 0xD6, 0x00, block, 16}, data...)
+		resp, err = r.transmit(writeCmd)
+		if err != nil || len(resp) < 2 || resp[len(resp)-2] != 0x90 {
+			lastErr = fmt.Errorf("falha na escrita do bloco %d com key %s: %v", block, key, err)
+			continue
+		}
+		
+		return nil // Sucesso!
 	}
 	
-	// 3. Write block
-	data, err := hex.DecodeString(dataHex)
-	if err != nil || len(data) != 16 {
-		return errors.New("dados devem ter 32 hex chars")
-	}
-	
-	writeCmd := append([]byte{0xFF, 0xD6, 0x00, block, 16}, data...)
-	resp, err = r.transmit(writeCmd)
-	if err != nil || len(resp) < 2 || resp[len(resp)-2] != 0x90 {
-		return fmt.Errorf("falha na escrita do bloco %d: %v", block, err)
-	}
-	
-	return nil
+	return lastErr // Retorna o último erro se todas as tentativas falharam
 }
 
 // DeriveKeyFromUID deriva a chave do UID (implementação baseada no JS)
@@ -415,24 +453,12 @@ func (r *Reader) testAuthentication(block byte, keyHex string) error {
 
 // DeriveKeyFromUID deriva uma key do UID usando o algoritmo Creality
 func (r *Reader) DeriveKeyFromUID(uid string) string {
-	// Implementação baseada no algoritmo JavaScript fornecido
-	// O algoritmo usa o UID para gerar uma key específica
-	
-	// Por enquanto, vamos usar as keys conhecidas baseadas no UID
-	// Estas são as keys derivadas corretas observadas:
-	switch uid {
-	case "c56a083e":
-		return "FE7B130D4E70" // Key derivada para UID c56a083e
-	case "c96a083e":
-		return "B50FBBD0BBD1" // Key derivada para UID c96a083e
-	case "f6a0083e":
-		return "BDA0962734CC" // Key derivada para UID f6a0083e
-	default:
-		// Para UIDs desconhecidos, implementar algoritmo baseado no padrão
-		// TODO: Implementar algoritmo completo baseado no JavaScript
-		// Por enquanto, usar uma derivação simples
-		return "FFFFFFFFFFFF" // Fallback para key padrão
+	derivedKey, err := creality.DeriveS1KeyFromUID(uid)
+	if err != nil {
+		// Em caso de erro, retornar a chave padrão
+		return "FFFFFFFFFFFF"
 	}
+	return derivedKey
 }
 
 // ReadRangeAlternative versão alternativa que tenta diferentes métodos

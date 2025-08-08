@@ -488,20 +488,31 @@ func convertMaterial(material string) string {
 
 	// Mapear nomes para códigos
 	materials := map[string]string{
-		"Generic PLA":     "00001",
-		"Generic ABS":     "00004",
-		"Generic PETG":    "00003",
+		"Hyper PLA":       "01001",
+		"Hyper PLA-CF":    "02001",
+		"Hyper PETG":      "06002",
+		"Hyper ABS":       "03001",
+		"ENDER FAST PLA":  "09002",
 		"CR-PLA":          "04001",
+		"CR-Silk":         "05001",
+		"CR-PETG":         "06001",
 		"CR-ABS":          "07001",
+		"Ender-PLA":       "08001",
 		"EN-PLA+":         "09001",
+		"Generic PLA":     "00001",
 		"Generic PLA-Silk": "00002",
+		"Generic PETG":    "00003",
+		"Generic ABS":     "00004",
 		"Generic TPU":     "00005",
+		"Generic PLA-CF":  "00006",
+		"Generic ASA":     "00007",
 	}
 
 	if code, ok := materials[material]; ok {
 		return code
 	}
 
+	// Se não encontrar, retornar o próprio código
 	return material
 }
 
