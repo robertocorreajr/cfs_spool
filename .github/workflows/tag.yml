@@ -58,7 +58,13 @@ jobs:
         if: steps.check_changes.outputs.has_changes == 'true'
         run: |
           new_version=${{ steps.bump_version.outputs.new_version }}
+          echo "Creating tag $new_version..."
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git tag -a "$new_version" -m "Release $new_version"
+          changelog=$(git log --pretty=format:'%s' $(git describe --tags --abbrev=0)..HEAD)
+          message="Release $new_version
+
+          🔄 Alterações desde a última versão:
+          $changelog"
+          git tag -a "$new_version" -m "$message"
           git push origin "$new_version"
