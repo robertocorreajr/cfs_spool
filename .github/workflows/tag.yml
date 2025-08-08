@@ -7,7 +7,6 @@ on:
     paths-ignore:
       - '**.md'
       - '.gitignore'
-      - '.github/**'
 
 jobs:
   create-tag:
@@ -15,11 +14,25 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           
+      - name: Check for code changes
+        id: check_changes
+        run: |
+          # List changed files excluding ignored paths
+          changes=$(git diff --name-only HEAD^ HEAD | grep -vE '\.(md|gitignore)$' | grep -vE '^\.github/')
+          if [ -n "$changes" ]; then
+            echo "Has code changes"
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "No code changes"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
+          
       - name: Get latest tag
+        if: steps.check_changes.outputs.has_changes == 'true'
         id: get_latest_tag
         run: |
           # Get latest tag or use v1.2.1 if none exists
@@ -42,6 +55,7 @@ jobs:
           echo "new_version=$new_version" >> $GITHUB_OUTPUT
 
       - name: Create tag
+        if: steps.check_changes.outputs.has_changes == 'true'
         run: |
           new_version=${{ steps.bump_version.outputs.new_version }}
           git config --local user.email "action@github.com"
