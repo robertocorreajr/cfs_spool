@@ -13,15 +13,15 @@ func main() {
 	// Criar nova instância com valores fixos
 	fields := creality.NewFields()
 	
-	// Definir outros campos
-	fields.Date = "AB124"     // A B1 24
+	// Definir outros campos conforme nova especificação
+	fields.Date = "BB124"     // BB124 (formato correto)
 	fields.Supplier = "0276"  // Creality
 	fields.Material = "01001" // Hyper PLA
 	fields.Length = "0165"    // 165cm (500g)
 	fields.Serial = "000001"  // Serial number
 	
 	// Testar SetColor
-	err := fields.SetColor("FFFFF")
+	err := fields.SetColor("000000")  // 6 caracteres para cor preta
 	if err != nil {
 		log.Fatalf("Erro ao definir cor: %v", err)
 	}
@@ -71,12 +71,16 @@ func main() {
 		log.Fatalf("ERRO: Batch deveria ser 'A2', obtido '%s'", parsedFields.Batch)
 	}
 	
-	if parsedFields.Reserve != "000000" {
-		log.Fatalf("ERRO: Reserve deveria ser '000000', obtido '%s'", parsedFields.Reserve)
+	if parsedFields.Reserve != "0000" {  // 4 bytes na nova estrutura
+		log.Fatalf("ERRO: Reserve deveria ser '0000', obtido '%s'", parsedFields.Reserve)
 	}
 	
-	if parsedFields.Color[0] != '0' {
-		log.Fatalf("ERRO: Color deveria começar com '0', obtido '%s'", parsedFields.Color)
+	if parsedFields.Material != "01001" {
+		log.Fatalf("ERRO: Material deveria ser '01001', obtido '%s'", parsedFields.Material)
+	}
+	
+	if len(parsedFields.Color) != 7 || parsedFields.Color[0] != '0' {
+		log.Fatalf("ERRO: Color deveria ter 7 chars começando com '0', obtido '%s'", parsedFields.Color)
 	}
 	
 	fmt.Println("\n✅ Teste concluído com sucesso!")

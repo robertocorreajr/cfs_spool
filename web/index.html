@@ -403,9 +403,9 @@
                             <label for="color">🎨 Cor (Hex)</label>
                             <div class="color-input-section">
                                 <div id="color-preview" class="color-preview" onclick="openColorPicker()"></div>
-                                <input type="text" id="color" placeholder="Ex: FF401" maxlength="5" onchange="updateColorPreview()" required>
+                                <input type="text" id="color" placeholder="Ex: FF4010" maxlength="6" onchange="updateColorPreview()" required>
                             </div>
-                            <div class="field-limit-info">5 caracteres hexadecimais (sem #). O sistema adicionará automaticamente um '0' no início.</div>
+                            <div class="field-limit-info">6 caracteres hexadecimais (sem #). O sistema adicionará automaticamente um '0' no início.</div>
                             <div id="color-palette" class="color-palette"></div>
                             <input type="color" id="color-picker" onchange="updateColorHex()" style="display: none;">
                         </div>
@@ -631,8 +631,8 @@
             const colorPicker = document.getElementById('color-picker');
             const colorHex = document.getElementById('color');
             
-            // Converter #RRGGBB para 5 caracteres (removendo o último dígito)
-            let hex = colorPicker.value.substring(1, 6); // Pega apenas 5 caracteres
+            // Converter #RRGGBB para 6 caracteres
+            let hex = colorPicker.value.substring(1); // Pega todos os 6 caracteres
             colorHex.value = hex.toUpperCase();
             updateColorPreview();
         }
@@ -642,9 +642,9 @@
             const colorHex = document.getElementById('color');
             const preview = document.getElementById('color-preview');
             
-            if (colorHex.value && colorHex.value.length === 5) {
-                // Adicionar o '0' no início e completar para 6 caracteres RGB
-                const rgb = '0' + colorHex.value;
+            if (colorHex.value && colorHex.value.length === 6) {
+                // Usar os 6 caracteres diretos para RGB
+                const rgb = colorHex.value;
                 preview.style.background = `#${rgb}`;
                 preview.classList.add('has-color');
                 
@@ -711,7 +711,7 @@
                 const colorOption = document.createElement('div');
                 colorOption.className = 'color-option';
                 colorOption.style.backgroundColor = color;
-                colorOption.title = color.substring(1, 6).toUpperCase(); // Formato 5 chars
+                colorOption.title = color.substring(1).toUpperCase(); // Formato 6 chars
                 colorOption.addEventListener('click', () => selectPresetColor(color, colorOption));
                 palette.appendChild(colorOption);
             });
@@ -727,8 +727,8 @@
             // Selecionar nova cor
             element.classList.add('selected');
             
-            // Converter para formato de 5 caracteres (sem o '0' inicial)
-            const colorValue = hexColor.substring(1, 6).toUpperCase(); // Primeiros 5 chars
+            // Converter para formato de 6 caracteres
+            const colorValue = hexColor.substring(1).toUpperCase(); // Todos os 6 chars
             
             // Atualizar campos
             document.getElementById('color').value = colorValue;

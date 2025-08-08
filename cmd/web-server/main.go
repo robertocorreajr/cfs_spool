@@ -36,13 +36,13 @@ type WriteResponse struct {
 }
 
 type TagInfo struct {
-	UID      string `json:"uid"`
-	Date     string `json:"date"`
-	Supplier string `json:"supplier"`
-	Material string `json:"material"`
-	Color    string `json:"color"`
-	Length   string `json:"length"`
-	Serial   string `json:"serial"`
+	UID          string `json:"uid"`
+	Date         string `json:"date"`
+	Supplier     string `json:"supplier"`
+	Material     string `json:"material"`
+	Color        string `json:"color"`
+	Length       string `json:"length"`
+	Serial       string `json:"serial"`
 }
 
 type OptionsResponse struct {
@@ -210,15 +210,26 @@ func readTagHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Verificar se é uma tag virgem
+	if fields.IsBlankTag() {
+		response := ReadResponse{
+			Success: false,
+			Error:   "Tag virgem detectada. Esta tag não contém dados válidos ou nunca foi gravada. Use a aba 'Gravar Tag' para configurá-la.",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
 	// Preparar resposta
 	tagInfo := &TagInfo{
-		UID:      uid,
-		Date:     fields.FormatDate(),
-		Supplier: fields.GetSupplierName(),
-		Material: fields.GetMaterialName(),
-		Color:    fields.FormatColor(),
-		Length:   fields.FormatLength(),
-		Serial:   fields.Serial,
+		UID:          uid,
+		Date:         fields.FormatDate(),
+		Supplier:     fields.GetSupplierName(),
+		Material:     fields.GetMaterialName(),
+		Color:        fields.FormatColor(),
+		Length:       fields.FormatLength(),
+		Serial:       fields.Serial,
 	}
 
 	response := ReadResponse{
@@ -304,7 +315,7 @@ func writeTagHandler(w http.ResponseWriter, r *http.Request) {
 	fields.Length = lengthCode
 	fields.Serial = req.Serial
 	
-	// Definir cor garantindo formato correto (0 + 5 caracteres hex)
+	// Definir cor garantindo formato correto (0 + 6 caracteres hex)
 	if req.Color != "" {
 		err := fields.SetColor(req.Color)
 		if err != nil {
