@@ -92,7 +92,7 @@ go build -o cfs-spool-cli ./cmd/cfs-spool
   - Auto-padding with leading zeros
 - **Smart logic**:
   - Generic material → Generic supplier (automatic)
-  - Creality material → 1B3D supplier (automatic)
+  - Creality material → 0276 supplier (Creality)
   - Material filtering by supplier
 
 ### 📟 CLI Interface
@@ -116,7 +116,7 @@ go build -o cfs-spool-cli ./cmd/cfs-spool
 ╚══════════════════════════════════════════╝
 📦 Batch:       1A5
 📅 Date:        January 20, 2024
-🏭 Supplier:    1B3D
+🏭 Supplier:    0276 (Creality)
 🧪 Material:    CR-PLA (standard)
 🎨 Color:       #77BB41 (hex)
 📏 Length:      330cm (1kg filament)

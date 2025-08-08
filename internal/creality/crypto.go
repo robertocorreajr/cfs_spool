@@ -4,6 +4,7 @@ import (
 	"crypto/aes"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"strings"
 )
 
@@ -27,10 +28,16 @@ func DeriveS1KeyFromUID(uidHex string) (string, error) {
 	return strings.ToUpper(hex.EncodeToString(out)[:12]), nil // 6 bytes
 }
 
-func EncryptPayloadToBlocks(ascii48 string) (b4, b5, b6 string, err error) {
-	// 48 ASCII bytes → precisa ser múltiplo de 16
-	if len(ascii48) != 48 {
-		return "", "", "", errors.New("payload ASCII deve ter 48 bytes")
+func EncryptPayloadToBlocks(ascii string) (b4, b5, b6 string, err error) {
+	// Aceitar 38 bytes (dados) ou 48 bytes (dados + padding)
+	var ascii48 string
+	if len(ascii) == 38 {
+		// Adicionar 10 bytes de padding com zeros
+		ascii48 = ascii + "0000000000"
+	} else if len(ascii) == 48 {
+		ascii48 = ascii
+	} else {
+		return "", "", "", fmt.Errorf("payload ASCII deve ter 38 ou 48 bytes, recebido: %d", len(ascii))
 	}
 
 	key := []byte(keyPayload) // 16 bytes

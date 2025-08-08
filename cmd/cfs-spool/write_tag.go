@@ -220,7 +220,7 @@ func cmdWriteTag(args []string) {
 	var batch, date, supplier, material, color, length, serial, reserve string
 	fs.StringVar(&batch, "batch", "", "Batch (3 chars): Exemplo: 1A5")
 	fs.StringVar(&date, "date", "", "Date (5 chars): Formato YYMDD, exemplo: 24120 para Janeiro 2024")  
-	fs.StringVar(&supplier, "supplier", "", "Supplier (4 chars): Exemplo: 1B3D")
+	fs.StringVar(&supplier, "supplier", "", "Supplier (4 chars): 0276=Creality, 0000=Genérico")
 	fs.StringVar(&material, "material", "", "Material (5 chars): Exemplo: 04001 para CR-PLA")
 	fs.StringVar(&color, "color", "", "Color (7 chars): Exemplo: 077BB41 para verde")
 	fs.StringVar(&length, "length", "", "Length (4 chars): Exemplo: 0330 para 330cm")
@@ -246,13 +246,26 @@ func cmdWriteTag(args []string) {
 		fmt.Println("❌ Erro: Todos os campos são obrigatórios!")
 		fmt.Println("\nExemplo de uso:")
 		fmt.Println("./cfs-spool write-tag \\")
-		fmt.Println("  -batch=1A5 \\")
-		fmt.Println("  -date=24120 \\")  
-		fmt.Println("  -supplier=1B3D \\")
+		fmt.Println("  -batch=A20 \\")
+		fmt.Println("  -date=25158 \\")  
+		fmt.Println("  -supplier=0276 \\")
 		fmt.Println("  -material=04001 \\")
 		fmt.Println("  -color=077BB41 \\")
 		fmt.Println("  -length=0330 \\")
 		fmt.Println("  -serial=000001")
+		return
+	}
+
+	// Validar código do fornecedor
+	validSuppliers := map[string]string{
+		"0276": "Creality",
+		"0000": "Genérico",
+	}
+	if _, isValid := validSuppliers[supplier]; !isValid {
+		fmt.Printf("❌ Erro: Código de fornecedor '%s' é inválido!\n", supplier)
+		fmt.Println("\nCódigos válidos:")
+		fmt.Println("  • 0276 = Creality")
+		fmt.Println("  • 0000 = Genérico")
 		return
 	}
 
@@ -321,7 +334,7 @@ func cmdWriteTag(args []string) {
 	}
 
 	if debug {
-		fmt.Printf("\n📋 Payload ASCII (48 bytes): %s\n", payload)
+		fmt.Printf("\n📋 Payload ASCII (38 bytes): %s\n", payload)
 	}
 
 	// 6. Criptografar dados
@@ -331,6 +344,12 @@ func cmdWriteTag(args []string) {
 		fmt.Printf("❌ Erro na criptografia: %v\n", err)
 		return
 	}
+
+	fmt.Printf("\n📊 DADOS RAW QUE SERÃO GRAVADOS:\n")
+	fmt.Printf("  Payload ASCII: %s (%d bytes)\n", payload, len(payload))
+	fmt.Printf("  Bloco 4 (hex): %s\n", b4)
+	fmt.Printf("  Bloco 5 (hex): %s\n", b5)
+	fmt.Printf("  Bloco 6 (hex): %s\n", b6)
 
 	if debug {
 		fmt.Printf("📊 Bloco 4: %s\n", b4)
@@ -386,11 +405,11 @@ func cmdWriteTag(args []string) {
 		// Aguardar um pouco para a tag processar
 		time.Sleep(time.Millisecond * 100)
 		
-		// Tentar ler com chave padrão
+		// Tentar ler com a mesma chave que foi usada para gravar
 		success := true
 		for i, expectedBlock := range blocksToWrite {
 			block := byte(4 + i)
-			readData, err := rdr.TryReadBlock(block, rfid.KeyTypeA, "FFFFFFFFFFFF")
+			readData, err := rdr.TryReadBlock(block, rfid.KeyTypeA, useKey)
 			if err != nil {
 				fmt.Printf("❌ Verificação falhou no bloco %d: %v\n", block, err)
 				success = false

@@ -133,6 +133,11 @@ func ParseFieldsCompat(data string) (Fields, error) {
 		return ParseFields(data)
 	}
 	
+	// Se tem 40 bytes, é um payload de dados criptografados real - usar apenas 38 bytes
+	if len(data) == 40 {
+		return ParseFields(data[:38])
+	}
+	
 	// Se tem 48 bytes, é formato antigo - extrair apenas os primeiros 38 bytes
 	if len(data) == 48 {
 		return ParseFields(data[:38])
@@ -228,23 +233,23 @@ func (f Fields) FormatLength() string {
 // GetMaterialName retorna o nome do material baseado no código
 func (f Fields) GetMaterialName() string {
 	materials := map[string]string{
-		"00001": "Generic PLA",
-		"00002": "Generic PLA-Silk",
-		"00003": "Generic PETG",
-		"00004": "Generic ABS",
-		"00005": "Generic TPU",
-		"00006": "Generic PLA-CF",
-		"00007": "Generic ASA",
-		"00008": "PA Genérico",
-		"00009": "PA-CF Genérico",
-		"00010": "BVOH Genérico",
-		"00012": "HIPS Genérico",
-		"00013": "PET-CF Genérico",
-		"00014": "PETG-CF Genérico",
-		"00015": "PA6-CF Genérico",
-		"00016": "PAHT-CF Genérico",
-		"00020": "PET Genérico",
-		"00021": "PC Genérico",
+		"00001": "PLA",
+		"00002": "PLA-Silk",
+		"00003": "PETG",
+		"00004": "ABS",
+		"00005": "TPU",
+		"00006": "PLA-CF",
+		"00007": "ASA",
+		"00008": "PA",
+		"00009": "PA-CF",
+		"00010": "BVOH",
+		"00012": "HIPS",
+		"00013": "PET-CF",
+		"00014": "PETG-CF",
+		"00015": "PA6-CF",
+		"00016": "PAHT-CF",
+		"00020": "PET",
+		"00021": "PC",
 		"01001": "Hyper PLA",
 		"02001": "Hyper PLA-CF",
 		"03001": "Hyper ABS",
@@ -298,7 +303,7 @@ func (f Fields) IsBlankTag() bool {
 	}
 	
 	// Supplier deve ter um código conhecido
-	knownSuppliers := []string{"0276", "1B3D", "FFFF"}
+	knownSuppliers := []string{"0276", "0000"}
 	validSupplier := false
 	for _, supplier := range knownSuppliers {
 		if f.Supplier == supplier {

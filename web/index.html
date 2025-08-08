@@ -515,15 +515,10 @@
                 materialSelect.removeChild(materialSelect.lastChild);
             }
 
-            // Filtrar materiais pelo campo brand
-            let filteredMaterials = options.materials;
-            if (supplier === '0276') { // Creality
-                filteredMaterials = options.materials.filter(m => m.brand === 'Creality');
-            } else if (supplier === '0000') { // Genérico
-                filteredMaterials = options.materials.filter(m => m.brand === 'Generic');
-            }
+            // Mostrar todos os materiais (removido filtro por fornecedor)
+            const filteredMaterials = options.materials;
 
-            // Repopular com materiais filtrados
+            // Repopular com todos os materiais
             filteredMaterials.forEach(item => {
                 const option = document.createElement('option');
                 option.value = item.code;
@@ -569,15 +564,10 @@
                 materialSelect.removeChild(materialSelect.lastChild);
             }
 
-            // Filtrar materiais pelo campo brand
-            let filteredMaterials = options.materials;
-            if (supplier === '0276') { // Creality
-                filteredMaterials = options.materials.filter(m => m.brand === 'Creality');
-            } else if (supplier === '0000') { // Genérico
-                filteredMaterials = options.materials.filter(m => m.brand === 'Generic');
-            }
+            // Mostrar todos os materiais (removido filtro por fornecedor) 
+            const filteredMaterials = options.materials;
 
-            // Repopular com materiais filtrados
+            // Repopular com todos os materiais
             filteredMaterials.forEach(item => {
                 const option = document.createElement('option');
                 option.value = item.code;

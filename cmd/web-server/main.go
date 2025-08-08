@@ -82,26 +82,53 @@ func getOptionsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	materials := []MaterialOption{
-		{"00001", "Generic PLA"},
-		{"00002", "Generic PLA-Silk"},
-		{"00003", "Generic PETG"},
-		{"00004", "Generic ABS"},
-		{"00005", "Generic TPU"},
-		{"00006", "Generic PLA-CF"},
-		{"00007", "Generic ASA"},
+		// Materiais Genéricos (códigos 00xxx)
+		{"00001", "PLA"},
+		{"00002", "PLA-Silk"},
+		{"00003", "PETG"},
+		{"00004", "ABS"},
+		{"00005", "TPU"},
+		{"00006", "PLA-CF"},
+		{"00007", "ASA"},
+		{"00008", "PA"},
+		{"00009", "PA-CF"},
+		{"00010", "BVOH"},
+		{"00012", "HIPS"},
+		{"00013", "PET-CF"},
+		{"00014", "PETG-CF"},
+		{"00015", "PA6-CF"},
+		{"00016", "PAHT-CF"},
+		{"00020", "PET"},
+		{"00021", "PC"},
+		
+		// Materiais Hyper (códigos 01xxx-03xxx)
+		{"01001", "Hyper PLA"},
+		{"02001", "Hyper PLA-CF"},
+		{"03001", "Hyper ABS"},
+		
+		// Materiais Creality (códigos 04xxx+)
 		{"04001", "CR-PLA"},
 		{"05001", "CR-Silk"},
 		{"06001", "CR-PETG"},
 		{"07001", "CR-ABS"},
 		{"08001", "Ender-PLA"},
 		{"09001", "EN-PLA+"},
+		{"09002", "ENDERFASTPLA"},
 		{"10001", "HP-TPU"},
+		{"10100", "CR-PLA Especial"},
 		{"11001", "CR-Nylon"},
+		{"13001", "CR-PLACarbon"},
+		{"14001", "CR-PLAMatte"},
+		{"15001", "CR-PLAFluo"},
+		{"16001", "CR-TPU"},
+		{"17001", "CR-Wood"},
+		{"18001", "HPUltraPLA"},
+		{"19001", "HP-ASA"},
 	}
 
 	vendors := []VendorOption{
-		{"1B3D", "Creality"},
-		{"FFFF", "Genérico"},
+		{"0276", "Creality"},
+		{"0000", "Genérico"},
 	}
 
 	lengths := []LengthOption{
@@ -395,13 +422,55 @@ func convertMaterial(material string) string {
 		return material
 	}
 	
-	// Mapear nomes para códigos
+	// Mapear nomes para códigos - agora com nomes atualizados
 	materials := map[string]string{
-		"Generic PLA": "00001",
-		"Generic ABS": "00004",
+		// Materiais genéricos (sem prefixo "Generic")
+		"PLA":         "00001",
+		"PLA-Silk":    "00002", 
+		"PETG":        "00003",
+		"ABS":         "00004",
+		"TPU":         "00005",
+		"PLA-CF":      "00006",
+		"ASA":         "00007",
+		"PA":          "00008",
+		"PA-CF":       "00009",
+		"BVOH":        "00010",
+		"HIPS":        "00012",
+		"PET-CF":      "00013",
+		"PETG-CF":     "00014",
+		"PA6-CF":      "00015",
+		"PAHT-CF":     "00016",
+		"PET":         "00020",
+		"PC":          "00021",
+		
+		// Materiais Hyper
+		"Hyper PLA":    "01001",
+		"Hyper PLA-CF": "02001",
+		"Hyper ABS":    "03001",
+		
+		// Materiais Creality
+		"CR-PLA":           "04001",
+		"CR-Silk":          "05001",
+		"CR-PETG":          "06001",
+		"CR-ABS":           "07001",
+		"Ender-PLA":        "08001",
+		"EN-PLA+":          "09001",
+		"ENDERFASTPLA":     "09002",
+		"HP-TPU":           "10001",
+		"CR-PLA Especial":  "10100",
+		"CR-Nylon":         "11001",
+		"CR-PLACarbon":     "13001",
+		"CR-PLAMatte":      "14001",
+		"CR-PLAFluo":       "15001",
+		"CR-TPU":           "16001",
+		"CR-Wood":          "17001",
+		"HPUltraPLA":       "18001",
+		"HP-ASA":           "19001",
+		
+		// Manter compatibilidade com nomes antigos se necessário
+		"Generic PLA":  "00001",
+		"Generic ABS":  "00004", 
 		"Generic PETG": "00003",
-		"CR-PLA": "04001",
-		"CR-ABS": "07001",
 	}
 	
 	if code, ok := materials[material]; ok {
