@@ -379,12 +379,6 @@
                 <form id="write-form" style="margin-top: 30px;">
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="batch">📦 Lote</label>
-                            <input type="text" id="batch" maxlength="3" placeholder="Ex: 1A5 (opcional - será '000' se vazio)">
-                            <div class="field-limit-info">Máximo 3 caracteres. Campo opcional - será preenchido com '000' se deixado em branco.</div>
-                        </div>
-                        
-                        <div class="form-group">
                             <label for="date">📅 Data</label>
                             <input type="date" id="date" required>
                         </div>
@@ -409,8 +403,9 @@
                             <label for="color">🎨 Cor (Hex)</label>
                             <div class="color-input-section">
                                 <div id="color-preview" class="color-preview" onclick="openColorPicker()"></div>
-                                <input type="text" id="color" placeholder="Ex: FF40130" maxlength="7" onchange="updateColorPreview()" required>
+                                <input type="text" id="color" placeholder="Ex: FF401" maxlength="5" onchange="updateColorPreview()" required>
                             </div>
+                            <div class="field-limit-info">5 caracteres hexadecimais (sem #). O sistema adicionará automaticamente um '0' no início.</div>
                             <div id="color-palette" class="color-palette"></div>
                             <input type="color" id="color-picker" onchange="updateColorHex()" style="display: none;">
                         </div>
@@ -636,8 +631,8 @@
             const colorPicker = document.getElementById('color-picker');
             const colorHex = document.getElementById('color');
             
-            // Converter #RRGGBB para RRGGBB0 (formato CFS)
-            let hex = colorPicker.value.substring(1) + '0';
+            // Converter #RRGGBB para 5 caracteres (removendo o último dígito)
+            let hex = colorPicker.value.substring(1, 6); // Pega apenas 5 caracteres
             colorHex.value = hex.toUpperCase();
             updateColorPreview();
         }
@@ -647,9 +642,9 @@
             const colorHex = document.getElementById('color');
             const preview = document.getElementById('color-preview');
             
-            if (colorHex.value && colorHex.value.length >= 6) {
-                // Pegar apenas os primeiros 6 caracteres para RGB
-                const rgb = colorHex.value.substring(0, 6);
+            if (colorHex.value && colorHex.value.length === 5) {
+                // Adicionar o '0' no início e completar para 6 caracteres RGB
+                const rgb = '0' + colorHex.value;
                 preview.style.background = `#${rgb}`;
                 preview.classList.add('has-color');
                 
@@ -716,7 +711,7 @@
                 const colorOption = document.createElement('div');
                 colorOption.className = 'color-option';
                 colorOption.style.backgroundColor = color;
-                colorOption.title = color.substring(1).toUpperCase() + '0'; // Formato CFS
+                colorOption.title = color.substring(1, 6).toUpperCase(); // Formato 5 chars
                 colorOption.addEventListener('click', () => selectPresetColor(color, colorOption));
                 palette.appendChild(colorOption);
             });
@@ -732,11 +727,11 @@
             // Selecionar nova cor
             element.classList.add('selected');
             
-            // Converter para formato CFS (RRGGBB0)
-            const cfsColor = hexColor.substring(1).toUpperCase() + '0';
+            // Converter para formato de 5 caracteres (sem o '0' inicial)
+            const colorValue = hexColor.substring(1, 6).toUpperCase(); // Primeiros 5 chars
             
             // Atualizar campos
-            document.getElementById('color').value = cfsColor;
+            document.getElementById('color').value = colorValue;
             updateColorPreview();
         }
         
@@ -784,11 +779,7 @@
                             ${data.data.uid}
                         </div>
                         <div class="tag-field">
-                            <strong>📦 Lote:</strong>
-                            ${data.data.batch}
-                        </div>
-                        <div class="tag-field">
-                            <strong>📅 Data:</strong>
+                            <strong> Data:</strong>
                             ${data.data.date}
                         </div>
                         <div class="tag-field">
@@ -857,7 +848,6 @@
             
             // Preparar dados
             const formData = {
-                batch: padBatch(document.getElementById('batch').value),
                 date: document.getElementById('date').value,
                 supplier: document.getElementById('supplier').value,
                 material: document.getElementById('material').value,
@@ -906,15 +896,6 @@
             }
             
             return lengthSelect.value;
-        }
-        
-        // Preencher lote com zeros à esquerda (máximo 3 chars)
-        function padBatch(batch) {
-            // Se vazio, usar "000"
-            if (!batch || batch.trim() === '') {
-                return '000';
-            }
-            return batch.padStart(3, '0');
         }
         
         // Preencher serial com zeros à esquerda (máximo 6 chars)

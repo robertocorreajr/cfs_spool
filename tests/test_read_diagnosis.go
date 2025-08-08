@@ -116,13 +116,14 @@ func main() {
 			fmt.Printf("⚠️  Dados descriptografados mas parser falhou: %v\n", err)
 		} else {
 			fmt.Println("✅ Campos parseados com sucesso:")
-			fmt.Printf("   Batch: %s\n", fields.Batch)
+			fmt.Printf("   Lote (fixo): %s\n", fields.Batch)
 			fmt.Printf("   Date: %s (%s)\n", fields.Date, fields.FormatDate())
 			fmt.Printf("   Supplier: %s (%s)\n", fields.Supplier, fields.GetSupplierName())
 			fmt.Printf("   Material: %s (%s)\n", fields.Material, fields.GetMaterialName())
 			fmt.Printf("   Color: %s (%s)\n", fields.Color, fields.FormatColor())
 			fmt.Printf("   Length: %s (%s)\n", fields.Length, fields.FormatLength())
 			fmt.Printf("   Serial: %s\n", fields.Serial)
+			fmt.Printf("   Reserva (fixo): %s\n", fields.Reserve)
 		}
 	}
 

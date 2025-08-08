@@ -60,32 +60,32 @@ func main() {
 	}
 	
 	// Converter hex para ASCII se necessário
-	ascii48 := decrypted
-	if len(ascii48) == 96 { // Se ainda é hex, converter para ASCII
-		ascii48, err = hexToASCII(decrypted)
+	ascii38 := decrypted
+	if len(ascii38) == 76 { // Se ainda é hex, converter para ASCII (38*2=76)
+		ascii38, err = hexToASCII(decrypted)
 		if err != nil {
 			fmt.Printf("Erro ao converter hex para ASCII: %v\n", err)
 			return
 		}
-		fmt.Printf("ASCII convertido: %s\n", ascii48)
+		fmt.Printf("ASCII convertido: %s\n", ascii38)
 	}
 	
-	// Parse dos campos
+	// Parse dos campos (novo formato de 38 bytes)
 	fmt.Println("\n=== Interpretação dos Campos ===")
 	
-	if len(ascii48) >= 48 {
-		fields, err := creality.ParseFields(ascii48[:48])
+	if len(ascii38) >= 38 {
+		fields, err := creality.ParseFields(ascii38[:38])
 		if err != nil {
 			fmt.Printf("Erro ao fazer parse: %v\n", err)
 		} else {
-			fmt.Printf("Batch: %s\n", fields.Batch)
+			fmt.Printf("Lote (fixo): %s\n", fields.Batch)
 			fmt.Printf("Data: %s (%s)\n", fields.Date, fields.FormatDate())
 			fmt.Printf("Fornecedor: %s (%s)\n", fields.Supplier, fields.GetSupplierName())
 			fmt.Printf("Material: %s (%s)\n", fields.Material, fields.GetMaterialName())
 			fmt.Printf("Cor: %s (%s)\n", fields.Color, fields.FormatColor())
 			fmt.Printf("Comprimento: %s (%s)\n", fields.Length, fields.FormatLength())
 			fmt.Printf("Serial: %s\n", fields.Serial)
-			fmt.Printf("Reserva: %s\n", fields.Reserve)
+			fmt.Printf("Reserva (fixo): %s\n", fields.Reserve)
 		}
 	}
 	

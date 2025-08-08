@@ -21,14 +21,12 @@ type ReadResponse struct {
 }
 
 type WriteRequest struct {
-	Batch    string `json:"batch"`
 	Date     string `json:"date"`     // Formato: YYYY-MM-DD
 	Supplier string `json:"supplier"`
 	Material string `json:"material"` // Código ou nome
 	Color    string `json:"color"`
 	Length   string `json:"length"`   // Código ou valor em gramas
 	Serial   string `json:"serial"`
-	Reserve  string `json:"reserve,omitempty"`
 }
 
 type WriteResponse struct {
@@ -39,14 +37,12 @@ type WriteResponse struct {
 
 type TagInfo struct {
 	UID      string `json:"uid"`
-	Batch    string `json:"batch"`
 	Date     string `json:"date"`
 	Supplier string `json:"supplier"`
 	Material string `json:"material"`
 	Color    string `json:"color"`
 	Length   string `json:"length"`
 	Serial   string `json:"serial"`
-	Reserve  string `json:"reserve,omitempty"`
 }
 
 type OptionsResponse struct {
@@ -217,14 +213,12 @@ func readTagHandler(w http.ResponseWriter, r *http.Request) {
 	// Preparar resposta
 	tagInfo := &TagInfo{
 		UID:      uid,
-		Batch:    fields.Batch,
 		Date:     fields.FormatDate(),
 		Supplier: fields.GetSupplierName(),
 		Material: fields.GetMaterialName(),
 		Color:    fields.FormatColor(),
 		Length:   fields.FormatLength(),
 		Serial:   fields.Serial,
-		Reserve:  fields.Reserve,
 	}
 
 	response := ReadResponse{
@@ -302,23 +296,29 @@ func writeTagHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Preparar campos
-	fields := creality.Fields{
-		Batch:    req.Batch,
-		Date:     date,
-		Supplier: req.Supplier,
-		Material: materialCode,
-		Color:    req.Color,
-		Length:   lengthCode,
-		Serial:   req.Serial,
-		Reserve:  req.Reserve,
+	// Preparar campos usando a função construtora
+	fields := creality.NewFields()
+	fields.Date = date
+	fields.Supplier = req.Supplier
+	fields.Material = materialCode
+	fields.Length = lengthCode
+	fields.Serial = req.Serial
+	
+	// Definir cor garantindo formato correto (0 + 5 caracteres hex)
+	if req.Color != "" {
+		err := fields.SetColor(req.Color)
+		if err != nil {
+			response := WriteResponse{
+				Success: false,
+				Error:   fmt.Sprintf("Erro no formato da cor: %v", err),
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(response)
+			return
+		}
 	}
 
-	if fields.Reserve == "" {
-		fields.Reserve = "00000000000000"
-	}
-
-	// Validar e criar payload
+	// Validar e criar payload (valores fixos são aplicados automaticamente)
 	payload, err := fields.ASCIIConcat()
 	if err != nil {
 		response := WriteResponse{

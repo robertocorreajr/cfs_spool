@@ -7,52 +7,101 @@ import (
 
 // tamanhos em bytes ASCII
 const (
-	lenBatch    = 3
+	lenBatch    = 2  // A2 (fixo)
 	lenDate     = 5
 	lenSupplier = 4
 	lenMaterial = 5
-	lenColor    = 7
+	lenColor    = 6  // 0 + 5 caracteres hex
 	lenLength   = 4
 	lenSerial   = 6
-	lenReserve  = 14
+	lenReserve  = 6  // 000000 (fixo)
 )
 
 type Fields struct {
 	Batch, Date, Supplier, Material, Color, Length, Serial, Reserve string
 }
 
+// NewFields cria uma nova instância de Fields com valores fixos para Batch e Reserve
+func NewFields() Fields {
+	return Fields{
+		Batch:   "A2",     // Valor fixo
+		Reserve: "000000", // Valor fixo
+	}
+}
+
+// SetBatchFixed força o campo Batch para o valor fixo "A2"
+func (f *Fields) SetBatchFixed() {
+	f.Batch = "A2"
+}
+
+// SetReserveFixed força o campo Reserve para o valor fixo "000000"
+func (f *Fields) SetReserveFixed() {
+	f.Reserve = "000000"
+}
+
+// SetColor define o campo Color garantindo que sempre comece com "0"
+// color deve ser uma string hex de 5 caracteres (sem #)
+func (f *Fields) SetColor(color string) error {
+	if len(color) != 5 {
+		return errors.New("cor deve ter exatamente 5 caracteres hex")
+	}
+	f.Color = "0" + color
+	return nil
+}
+
+// ValidateAndFix valida e corrige automaticamente os campos obrigatórios
+func (f *Fields) ValidateAndFix() {
+	// Força valores fixos
+	f.SetBatchFixed()
+	f.SetReserveFixed()
+	
+	// Garante que Color comece com "0" se não estiver vazio
+	if f.Color != "" && len(f.Color) == 6 && f.Color[0] != '0' {
+		// Se Color tem 6 caracteres mas não começa com 0, adiciona o 0
+		if len(f.Color) == 5 {
+			f.Color = "0" + f.Color
+		}
+	}
+}
+
 func (f Fields) ASCIIConcat() (string, error) {
-	if len(f.Batch) != lenBatch ||
-		len(f.Date) != lenDate ||
-		len(f.Supplier) != lenSupplier ||
-		len(f.Material) != lenMaterial ||
-		len(f.Color) != lenColor ||
-		len(f.Length) != lenLength ||
-		len(f.Serial) != lenSerial ||
-		len(f.Reserve) != lenReserve {
+	// Cria uma cópia para não modificar o original
+	fields := f
+	
+	// Aplica validação e correções automáticas
+	fields.ValidateAndFix()
+	
+	if len(fields.Batch) != lenBatch ||
+		len(fields.Date) != lenDate ||
+		len(fields.Supplier) != lenSupplier ||
+		len(fields.Material) != lenMaterial ||
+		len(fields.Color) != lenColor ||
+		len(fields.Length) != lenLength ||
+		len(fields.Serial) != lenSerial ||
+		len(fields.Reserve) != lenReserve {
 		return "", errors.New("algum campo está com tamanho incorreto")
 	}
 	return fmt.Sprintf("%s%s%s%s%s%s%s%s",
-		f.Batch, f.Date, f.Supplier, f.Material,
-		f.Color, f.Length, f.Serial, f.Reserve), nil
+		fields.Batch, fields.Date, fields.Supplier, fields.Material,
+		fields.Color, fields.Length, fields.Serial, fields.Reserve), nil
 }
 
-// ParseFields extrai os campos de uma string ASCII de 48 bytes
-func ParseFields(ascii48 string) (Fields, error) {
-	if len(ascii48) != 48 {
-		return Fields{}, errors.New("string ASCII deve ter exatamente 48 bytes")
+// ParseFields extrai os campos de uma string ASCII de 38 bytes
+func ParseFields(ascii38 string) (Fields, error) {
+	if len(ascii38) != 38 {
+		return Fields{}, errors.New("string ASCII deve ter exatamente 38 bytes")
 	}
 
 	// Extrair cada campo baseado no tamanho fixo
 	fields := Fields{
-		Batch:    ascii48[0:3],                    // 3 bytes
-		Date:     ascii48[3:8],                    // 5 bytes  
-		Supplier: ascii48[8:12],                   // 4 bytes
-		Material: ascii48[12:17],                  // 5 bytes
-		Color:    ascii48[17:24],                  // 7 bytes
-		Length:   ascii48[24:28],                  // 4 bytes
-		Serial:   ascii48[28:34],                  // 6 bytes
-		Reserve:  ascii48[34:48],                  // 14 bytes
+		Batch:    ascii38[0:2],                    // 2 bytes (A2)
+		Date:     ascii38[2:7],                    // 5 bytes  
+		Supplier: ascii38[7:11],                   // 4 bytes
+		Material: ascii38[11:16],                  // 5 bytes
+		Color:    ascii38[16:22],                  // 6 bytes (0 + 5 hex)
+		Length:   ascii38[22:26],                  // 4 bytes
+		Serial:   ascii38[26:32],                  // 6 bytes
+		Reserve:  ascii38[32:38],                  // 6 bytes (000000)
 	}
 
 	return fields, nil
@@ -90,7 +139,7 @@ func (f Fields) FormatDate() string {
 
 // FormatColor converte a cor para formato legível
 func (f Fields) FormatColor() string {
-	if len(f.Color) == 7 && f.Color[0] == '0' {
+	if len(f.Color) == 6 && f.Color[0] == '0' {
 		return "#" + f.Color[1:] + " (hex)"
 	}
 	return f.Color
