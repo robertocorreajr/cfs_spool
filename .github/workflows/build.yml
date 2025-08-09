@@ -203,6 +203,7 @@ jobs:
     - name: Download platform artifacts
       uses: actions/download-artifact@v4
       with:
+        name: ${{ matrix.artifact_pattern }}
         path: artifacts
     
     - name: Prepare installer workspace
@@ -212,10 +213,11 @@ jobs:
         find artifacts -name "*.zip" -type f || echo "No ZIP files found"
         ls -la artifacts/ || echo "No artifacts directory"
         
-        # Extract first ZIP found
-        if [ -f "$(find artifacts -name "*.zip" | head -1)" ]; then
-          echo "Extracting ZIP file..."
-          find artifacts -name "*.zip" | head -1 | xargs -I {} unzip {} -d installer-workspace/
+        # Extract the specific ZIP for this platform
+        zipfile=$(find artifacts -name "*.zip" | head -1)
+        if [ -f "$zipfile" ]; then
+          echo "Extracting ZIP file: $zipfile"
+          unzip "$zipfile" -d installer-workspace/
           echo "Contents after extraction:"
           ls -la installer-workspace/
         else
