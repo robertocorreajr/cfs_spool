@@ -397,25 +397,39 @@ jobs:
     - name: Create Windows Installer
       if: matrix.platform == 'windows'
       run: |
+        Write-Host "Starting Windows installer creation..."
+        
         # Install NSIS
+        Write-Host "Installing NSIS..."
         choco install nsis -y
         
         # Create installer directory structure
+        Write-Host "Creating directories..."
         New-Item -ItemType Directory -Force -Path "installer\bin"
         New-Item -ItemType Directory -Force -Path "installer\web"
         
+        # Debug: List what we have
+        Write-Host "Contents of installer-workspace:"
+        Get-ChildItem installer-workspace -Recurse
+        
         # Copy files with better error handling
         Write-Host "Copying application files..."
-        $appFile = Get-ChildItem installer-workspace -Recurse -Name "cfs-spool-app-*.exe" | Select-Object -First 1
+        $appFile = Get-ChildItem installer-workspace -Recurse -Filter "cfs-spool-app-*.exe" | Select-Object -First 1
         if ($appFile) {
-            Write-Host "Found app: $appFile"
-            Copy-Item "installer-workspace\$appFile" "installer\bin\cfs-spool.exe" -Force
+            Write-Host "Found app: $($appFile.FullName)"
+            Copy-Item $appFile.FullName "installer\bin\cfs-spool.exe" -Force
+        } else {
+            Write-Host "ERROR: No app file found"
+            exit 1
         }
         
-        $cliFile = Get-ChildItem installer-workspace -Recurse -Name "cfs-spool-cli-*.exe" | Select-Object -First 1
+        $cliFile = Get-ChildItem installer-workspace -Recurse -Filter "cfs-spool-cli-*.exe" | Select-Object -First 1
         if ($cliFile) {
-            Write-Host "Found CLI: $cliFile"
-            Copy-Item "installer-workspace\$cliFile" "installer\bin\cfs-spool-cli.exe" -Force
+            Write-Host "Found CLI: $($cliFile.FullName)"
+            Copy-Item $cliFile.FullName "installer\bin\cfs-spool-cli.exe" -Force
+        } else {
+            Write-Host "ERROR: No CLI file found"
+            exit 1
         }
         
         # Copy web files
@@ -423,46 +437,56 @@ jobs:
         if ($webDir) {
             Write-Host "Copying web files from: $($webDir.FullName)"
             Copy-Item -Recurse "$($webDir.FullName)\web\*" "installer\web\" -Force
+        } else {
+            Write-Host "ERROR: No web directory found"
+            exit 1
         }
         
-        # Create NSIS script line by line
-        "!define APPNAME `"CFS Spool`"" | Out-File "installer.nsi" -Encoding ASCII
-        "!define COMPANYNAME `"Creality`"" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "!define DESCRIPTION `"Creality CFS RFID Tag Reader`"" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "RequestExecutionLevel admin" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "InstallDir `"`$PROGRAMFILES\CFS Spool`"" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "Name `"CFS Spool`"" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "OutFile `"cfs-spool-${{ github.ref_name }}-installer.exe`"" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "Page components" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "Page directory" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "Page instfiles" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "Section `"CFS Spool`" SecMain" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "    SectionIn RO" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "    SetOutPath `$INSTDIR" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "    File /r `"installer\*`"" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "    WriteUninstaller `"`$INSTDIR\uninstall.exe`"" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "    CreateDirectory `"`$SMPROGRAMS\CFS Spool`"" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "    CreateShortCut `"`$SMPROGRAMS\CFS Spool\CFS Spool.lnk`" `"`$INSTDIR\bin\cfs-spool.exe`"" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "    CreateShortCut `"`$DESKTOP\CFS Spool.lnk`" `"`$INSTDIR\bin\cfs-spool.exe`"" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "SectionEnd" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "Section `"Uninstall`"" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "    Delete `"`$SMPROGRAMS\CFS Spool\CFS Spool.lnk`"" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "    Delete `"`$DESKTOP\CFS Spool.lnk`"" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "    RMDir `"`$SMPROGRAMS\CFS Spool`"" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "    Delete `"`$INSTDIR\uninstall.exe`"" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "    RMDir /r `"`$INSTDIR`"" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "SectionEnd" | Out-File "installer.nsi" -Append -Encoding ASCII
+        Write-Host "Files copied successfully. Creating NSIS installer..."
+        
+        # Create simple NSIS script
+        @"
+        !define APPNAME "CFS Spool"
+        !define COMPANYNAME "Creality"
+        !define DESCRIPTION "Creality CFS RFID Tag Reader"
+        
+        RequestExecutionLevel admin
+        InstallDir "`$PROGRAMFILES\CFS Spool"
+        Name "CFS Spool"
+        OutFile "cfs-spool-${{ github.ref_name }}-installer.exe"
+        
+        Page components
+        Page directory
+        Page instfiles
+        
+        Section "CFS Spool" SecMain
+            SectionIn RO
+            SetOutPath `$INSTDIR
+            File /r "installer\*"
+            WriteUninstaller "`$INSTDIR\uninstall.exe"
+            CreateDirectory "`$SMPROGRAMS\CFS Spool"
+            CreateShortCut "`$SMPROGRAMS\CFS Spool\CFS Spool.lnk" "`$INSTDIR\bin\cfs-spool.exe"
+            CreateShortCut "`$DESKTOP\CFS Spool.lnk" "`$INSTDIR\bin\cfs-spool.exe"
+        SectionEnd
+        
+        Section "Uninstall"
+            Delete "`$SMPROGRAMS\CFS Spool\CFS Spool.lnk"
+            Delete "`$DESKTOP\CFS Spool.lnk"
+            RMDir "`$SMPROGRAMS\CFS Spool"
+            Delete "`$INSTDIR\uninstall.exe"
+            RMDir /r "`$INSTDIR"
+        SectionEnd
+        "@ | Out-File "installer.nsi" -Encoding UTF8
         
         # Debug: show the created script
         Write-Host "Created NSIS script:"
         Get-Content "installer.nsi"
         
         # Build installer
+        Write-Host "Building installer with NSIS..."
         & "C:\Program Files (x86)\NSIS\makensis.exe" "installer.nsi"
+        
+        Write-Host "Windows installer creation completed."
       shell: powershell
     
     - name: Upload native installer
