@@ -187,7 +187,7 @@ jobs:
           - os: macos-latest
             platform: macos
             installer_type: dmg
-            artifact_pattern: "cfs-spool-macos*"
+            artifact_pattern: "cfs-spool-macos-apple-silicon"
           - os: ubuntu-latest
             platform: linux
             installer_type: appimage
