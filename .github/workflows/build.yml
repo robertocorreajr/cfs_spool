@@ -187,15 +187,15 @@ jobs:
           - os: macos-latest
             platform: macos
             installer_type: dmg
-            artifact_pattern: "cfs-spool-macos*"
+            artifact_name: "cfs-spool-macos-apple-silicon"
           - os: ubuntu-latest
             platform: linux
             installer_type: appimage
-            artifact_pattern: "cfs-spool-linux*"
+            artifact_name: "cfs-spool-linux-amd64"
           - os: windows-latest
             platform: windows
             installer_type: exe
-            artifact_pattern: "cfs-spool-windows*"
+            artifact_name: "cfs-spool-windows-amd64"
     
     steps:
     - uses: actions/checkout@v4
@@ -203,6 +203,7 @@ jobs:
     - name: Download platform artifacts
       uses: actions/download-artifact@v4
       with:
+        name: ${{ matrix.artifact_name }}
         path: artifacts
     
     - name: Prepare installer workspace
@@ -212,7 +213,7 @@ jobs:
         find artifacts -name "*.zip" -type f || echo "No ZIP files found"
         ls -la artifacts/ || echo "No artifacts directory"
         
-        # Extract first ZIP found
+        # Extract the specific ZIP found
         if [ -f "$(find artifacts -name "*.zip" | head -1)" ]; then
           echo "Extracting ZIP file..."
           find artifacts -name "*.zip" | head -1 | xargs -I {} unzip {} -d installer-workspace/
