@@ -187,7 +187,7 @@ jobs:
           - os: macos-latest
             platform: macos
             installer_type: dmg
-            artifact_pattern: "cfs-spool-macos-apple-silicon"
+            artifact_pattern: "cfs-spool-macos*"
           - os: ubuntu-latest
             platform: linux
             installer_type: appimage
@@ -203,7 +203,6 @@ jobs:
     - name: Download platform artifacts
       uses: actions/download-artifact@v4
       with:
-        name: ${{ matrix.artifact_pattern }}
         path: artifacts
     
     - name: Prepare installer workspace
@@ -213,11 +212,10 @@ jobs:
         find artifacts -name "*.zip" -type f || echo "No ZIP files found"
         ls -la artifacts/ || echo "No artifacts directory"
         
-        # Extract the specific ZIP for this platform
-        zipfile=$(find artifacts -name "*.zip" | head -1)
-        if [ -f "$zipfile" ]; then
-          echo "Extracting ZIP file: $zipfile"
-          unzip "$zipfile" -d installer-workspace/
+        # Extract first ZIP found
+        if [ -f "$(find artifacts -name "*.zip" | head -1)" ]; then
+          echo "Extracting ZIP file..."
+          find artifacts -name "*.zip" | head -1 | xargs -I {} unzip {} -d installer-workspace/
           echo "Contents after extraction:"
           ls -la installer-workspace/
         else
