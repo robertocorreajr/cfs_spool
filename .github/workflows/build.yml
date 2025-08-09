@@ -406,21 +406,23 @@ jobs:
         
         # Copy files with better error handling
         Write-Host "Copying application files..."
-        Get-ChildItem installer-workspace -Recurse -Name "cfs-spool-app-*.exe" | ForEach-Object { 
-            Write-Host "Found app: $_"
-            Copy-Item "installer-workspace\$_" "installer\bin\cfs-spool.exe" -Force
+        $appFile = Get-ChildItem installer-workspace -Recurse -Name "cfs-spool-app-*.exe" | Select-Object -First 1
+        if ($appFile) {
+            Write-Host "Found app: $appFile"
+            Copy-Item "installer-workspace\$appFile" "installer\bin\cfs-spool.exe" -Force
         }
-        Get-ChildItem installer-workspace -Recurse -Name "cfs-spool-cli-*.exe" | ForEach-Object { 
-            Write-Host "Found CLI: $_"
-            Copy-Item "installer-workspace\$_" "installer\bin\cfs-spool-cli.exe" -Force
+        
+        $cliFile = Get-ChildItem installer-workspace -Recurse -Name "cfs-spool-cli-*.exe" | Select-Object -First 1
+        if ($cliFile) {
+            Write-Host "Found CLI: $cliFile"
+            Copy-Item "installer-workspace\$cliFile" "installer\bin\cfs-spool-cli.exe" -Force
         }
         
         # Copy web files
-        Get-ChildItem installer-workspace -Recurse -Directory -Name "*" | ForEach-Object { 
-            if (Test-Path "installer-workspace\$_\web") {
-                Write-Host "Copying web files from: $_"
-                Copy-Item -Recurse "installer-workspace\$_\web\*" "installer\web\" -Force
-            }
+        $webDir = Get-ChildItem installer-workspace -Recurse -Directory | Where-Object { Test-Path "$($_.FullName)\web" } | Select-Object -First 1
+        if ($webDir) {
+            Write-Host "Copying web files from: $($webDir.FullName)"
+            Copy-Item -Recurse "$($webDir.FullName)\web\*" "installer\web\" -Force
         }
         
         # Create NSIS script line by line
