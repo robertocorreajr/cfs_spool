@@ -817,28 +817,7 @@
             const length = document.getElementById('length').value;
             
             if (!supplier || !material || color.length !== 6 || !length) {
-                alert('Por favor, preencha os campos obrigatórios: Fornecedor, Material, Cor e Comprimento.');                function updateColorPreview() {
-                    const colorHex = document.getElementById('color');
-                    const preview = document.getElementById('color-preview');
-                    
-                    if (colorHex.value.length === 6) {  // <-- Removido "colorHex.value &&"
-                        // Usar os 6 caracteres diretos para RGB
-                        const rgb = colorHex.value;
-                        preview.style.background = `#${rgb}`;
-                        preview.classList.add('has-color');
-                        
-                        // Destacar cor na paleta se corresponder
-                        highlightPaletteColor(`#${rgb.toUpperCase()}`);
-                    } else {
-                        preview.style.background = '#f8f9fa';
-                        preview.classList.remove('has-color');
-                        
-                        // Remover seleção da paleta
-                        document.querySelectorAll('.color-option').forEach(el => {
-                            el.classList.remove('selected');
-                        });
-                    }
-                }
+                alert('Por favor, preencha os campos obrigatórios: Fornecedor, Material, Cor e Comprimento.');
                 return;
             }
             
