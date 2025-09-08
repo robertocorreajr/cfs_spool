@@ -15,17 +15,17 @@ import (
 
 // Estruturas para API
 type ReadResponse struct {
-	Success bool              `json:"success"`
-	Data    *TagInfo          `json:"data,omitempty"`
-	Error   string            `json:"error,omitempty"`
+	Success bool     `json:"success"`
+	Data    *TagInfo `json:"data,omitempty"`
+	Error   string   `json:"error,omitempty"`
 }
 
 type WriteRequest struct {
-	Date     string `json:"date"`     // Formato: YYYY-MM-DD
+	Date     string `json:"date"` // Formato: YYYY-MM-DD
 	Supplier string `json:"supplier"`
 	Material string `json:"material"` // Código ou nome
 	Color    string `json:"color"`
-	Length   string `json:"length"`   // Código ou valor em gramas
+	Length   string `json:"length"` // Código ou valor em gramas
 	Serial   string `json:"serial"`
 }
 
@@ -36,13 +36,13 @@ type WriteResponse struct {
 }
 
 type TagInfo struct {
-	UID          string `json:"uid"`
-	Date         string `json:"date"`
-	Supplier     string `json:"supplier"`
-	Material     string `json:"material"`
-	Color        string `json:"color"`
-	Length       string `json:"length"`
-	Serial       string `json:"serial"`
+	UID      string `json:"uid"`
+	Date     string `json:"date"`
+	Supplier string `json:"supplier"`
+	Material string `json:"material"`
+	Color    string `json:"color"`
+	Length   string `json:"length"`
+	Serial   string `json:"serial"`
 }
 
 type OptionsResponse struct {
@@ -62,9 +62,9 @@ type VendorOption struct {
 }
 
 type LengthOption struct {
-	Code   string `json:"code"`
-	Name   string `json:"name"`
-	Grams  string `json:"grams"`
+	Code  string `json:"code"`
+	Name  string `json:"name"`
+	Grams string `json:"grams"`
 }
 
 // CORS middleware
@@ -100,12 +100,12 @@ func getOptionsHandler(w http.ResponseWriter, r *http.Request) {
 		{"00016", "PAHT-CF"},
 		{"00020", "PET"},
 		{"00021", "PC"},
-		
+
 		// Materiais Hyper (códigos 01xxx-03xxx)
 		{"01001", "Hyper PLA"},
 		{"02001", "Hyper PLA-CF"},
 		{"03001", "Hyper ABS"},
-		
+
 		// Materiais Creality (códigos 04xxx+)
 		{"04001", "CR-PLA"},
 		{"05001", "CR-Silk"},
@@ -188,12 +188,12 @@ func readTagHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Ler dados da tag usando TryReadBlock para garantir autenticação correta
 	var blocks []string
-	
+
 	// Tentar ler blocos 4, 5, 6 individualmente
 	for block := byte(4); block <= 6; block++ {
 		var data string
 		var err error
-		
+
 		// Primeiro tentar key padrão para tags novas
 		data, err = reader.TryReadBlock(block, rfid.KeyTypeA, "FFFFFFFFFFFF")
 		if err != nil {
@@ -250,13 +250,13 @@ func readTagHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Preparar resposta
 	tagInfo := &TagInfo{
-		UID:          uid,
-		Date:         fields.FormatDate(),
-		Supplier:     fields.GetSupplierName(),
-		Material:     fields.GetMaterialName(),
-		Color:        fields.FormatColor(),
-		Length:       fields.FormatLength(),
-		Serial:       fields.Serial,
+		UID:      uid,
+		Date:     fields.FormatDate(),
+		Supplier: fields.GetSupplierName(),
+		Material: fields.GetMaterialName(),
+		Color:    fields.FormatColor(),
+		Length:   fields.FormatLength(),
+		Serial:   fields.Serial,
 	}
 
 	response := ReadResponse{
@@ -305,7 +305,7 @@ func writeTagHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Converter material se necessário
 	materialCode := convertMaterial(req.Material)
-	
+
 	// Converter comprimento se necessário
 	lengthCode := convertLength(req.Length)
 
@@ -341,7 +341,7 @@ func writeTagHandler(w http.ResponseWriter, r *http.Request) {
 	fields.Material = materialCode
 	fields.Length = lengthCode
 	fields.Serial = req.Serial
-	
+
 	// Definir cor garantindo formato correto (0 + 6 caracteres hex)
 	if req.Color != "" {
 		err := fields.SetColor(req.Color)
@@ -408,11 +408,11 @@ func convertDate(dateStr string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	
+
 	year := t.Year() % 100 // Últimos 2 dígitos do ano
 	month := int(t.Month())
 	day := t.Day()
-	
+
 	return fmt.Sprintf("%02d%01d%02d", year, month, day), nil
 }
 
@@ -421,62 +421,62 @@ func convertMaterial(material string) string {
 	if len(material) == 5 {
 		return material
 	}
-	
+
 	// Mapear nomes para códigos - agora com nomes atualizados
 	materials := map[string]string{
 		// Materiais genéricos (sem prefixo "Generic")
-		"PLA":         "00001",
-		"PLA-Silk":    "00002", 
-		"PETG":        "00003",
-		"ABS":         "00004",
-		"TPU":         "00005",
-		"PLA-CF":      "00006",
-		"ASA":         "00007",
-		"PA":          "00008",
-		"PA-CF":       "00009",
-		"BVOH":        "00010",
-		"HIPS":        "00012",
-		"PET-CF":      "00013",
-		"PETG-CF":     "00014",
-		"PA6-CF":      "00015",
-		"PAHT-CF":     "00016",
-		"PET":         "00020",
-		"PC":          "00021",
-		
+		"PLA":      "00001",
+		"PLA-Silk": "00002",
+		"PETG":     "00003",
+		"ABS":      "00004",
+		"TPU":      "00005",
+		"PLA-CF":   "00006",
+		"ASA":      "00007",
+		"PA":       "00008",
+		"PA-CF":    "00009",
+		"BVOH":     "00010",
+		"HIPS":     "00012",
+		"PET-CF":   "00013",
+		"PETG-CF":  "00014",
+		"PA6-CF":   "00015",
+		"PAHT-CF":  "00016",
+		"PET":      "00020",
+		"PC":       "00021",
+
 		// Materiais Hyper
 		"Hyper PLA":    "01001",
 		"Hyper PLA-CF": "02001",
 		"Hyper ABS":    "03001",
-		
+
 		// Materiais Creality
-		"CR-PLA":           "04001",
-		"CR-Silk":          "05001",
-		"CR-PETG":          "06001",
-		"CR-ABS":           "07001",
-		"Ender-PLA":        "08001",
-		"EN-PLA+":          "09001",
-		"ENDERFASTPLA":     "09002",
-		"HP-TPU":           "10001",
-		"CR-PLA Especial":  "10100",
-		"CR-Nylon":         "11001",
-		"CR-PLACarbon":     "13001",
-		"CR-PLAMatte":      "14001",
-		"CR-PLAFluo":       "15001",
-		"CR-TPU":           "16001",
-		"CR-Wood":          "17001",
-		"HPUltraPLA":       "18001",
-		"HP-ASA":           "19001",
-		
+		"CR-PLA":          "04001",
+		"CR-Silk":         "05001",
+		"CR-PETG":         "06001",
+		"CR-ABS":          "07001",
+		"Ender-PLA":       "08001",
+		"EN-PLA+":         "09001",
+		"ENDERFASTPLA":    "09002",
+		"HP-TPU":          "10001",
+		"CR-PLA Especial": "10100",
+		"CR-Nylon":        "11001",
+		"CR-PLACarbon":    "13001",
+		"CR-PLAMatte":     "14001",
+		"CR-PLAFluo":      "15001",
+		"CR-TPU":          "16001",
+		"CR-Wood":         "17001",
+		"HPUltraPLA":      "18001",
+		"HP-ASA":          "19001",
+
 		// Manter compatibilidade com nomes antigos se necessário
 		"Generic PLA":  "00001",
-		"Generic ABS":  "00004", 
+		"Generic ABS":  "00004",
 		"Generic PETG": "00003",
 	}
-	
+
 	if code, ok := materials[material]; ok {
 		return code
 	}
-	
+
 	return material
 }
 
@@ -485,7 +485,7 @@ func convertLength(length string) string {
 	if len(length) == 4 {
 		return length
 	}
-	
+
 	// Mapear códigos para hexadecimal
 	lengths := map[string]string{
 		"0083": "0053", // 250g -> 83cm
@@ -493,23 +493,23 @@ func convertLength(length string) string {
 		"0330": "014A", // 1kg -> 330cm
 		"0660": "0294", // 2kg -> 660cm
 	}
-	
+
 	if code, ok := lengths[length]; ok {
 		return code
 	}
-	
+
 	// Mapear gramas diretamente para hexadecimal
 	gramToHex := map[string]string{
 		"250":  "0053",
-		"500":  "00A5", 
+		"500":  "00A5",
 		"1000": "014A",
 		"2000": "0294",
 	}
-	
+
 	if code, ok := gramToHex[length]; ok {
 		return code
 	}
-	
+
 	// Tentar converter valor em gramas para centímetros em hexadecimal
 	if grams, err := strconv.Atoi(length); err == nil {
 		cm := grams / 3 // Aproximação: 3g = 1cm
@@ -518,14 +518,14 @@ func convertLength(length string) string {
 		}
 		return fmt.Sprintf("%04X", cm)
 	}
-	
+
 	return "0053" // Default para 250g
 }
 
 func main() {
 	// Servir arquivos estáticos
 	http.Handle("/", http.FileServer(http.Dir("./web/")))
-	
+
 	// API endpoints
 	http.HandleFunc("/api/options", getOptionsHandler)
 	http.HandleFunc("/api/read", readTagHandler)
@@ -533,6 +533,6 @@ func main() {
 
 	fmt.Println("🌐 Servidor iniciado em http://localhost:8080")
 	fmt.Println("📱 Interface web disponível no navegador")
-	
+
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
