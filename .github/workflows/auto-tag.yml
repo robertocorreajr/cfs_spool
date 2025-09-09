@@ -4,11 +4,6 @@ on:
   push:
     branches:
       - main
-    paths-ignore:
-      - '**.md'
-      - '.gitignore'
-      - 'LICENSE'
-      - '.github/workflows/auto-tag.yml'
   
   # Permitir acionamento manual através da interface do GitHub
   workflow_dispatch:
@@ -34,6 +29,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Necessário para obter todas as tags
+          ref: main # Garantir que estamos na branch main
       
       - name: Configurar Git
         run: |
@@ -60,7 +56,24 @@ jobs:
       - name: Obter última tag
         id: get_tag
         run: |
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          # Buscar todas as tags remotas
+          git fetch --tags --force
+          
+          # Listar todas as tags para debug
+          echo "Todas as tags disponíveis:"
+          git tag -l | sort -V
+          
+          # Obter a última tag de versão (formato vX.Y.Z)
+          LATEST_TAG=$(git tag -l "v[0-9]*.[0-9]*.[0-9]*" | sort -V | tail -n 1)
+          
+          # Caso não exista nenhuma tag, começar com v0.0.0
+          if [ -z "$LATEST_TAG" ]; then
+            LATEST_TAG="v0.0.0"
+            echo "Nenhuma tag de versão encontrada, começando com $LATEST_TAG"
+          else
+            echo "Última tag de versão encontrada: $LATEST_TAG"
+          fi
+          
           echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
           
           # Extrair componentes da versão (remover o "v" inicial e dividir por pontos)
@@ -128,11 +141,40 @@ jobs:
       
       - name: Criar tag
         run: |
+          # Verificar se a tag já existe
+          if git rev-parse "${{ steps.new_version.outputs.version }}" >/dev/null 2>&1; then
+            echo "⚠️ ATENÇÃO: A tag ${{ steps.new_version.outputs.version }} já existe!"
+            echo "Para corrigir isso, você pode:"
+            echo "1. Remover a tag existente: git tag -d ${{ steps.new_version.outputs.version }} && git push origin :refs/tags/${{ steps.new_version.outputs.version }}"
+            echo "2. Ou incrementar manualmente para a próxima versão"
+            exit 1
+          fi
+          
+          echo "🏷️ Criando tag ${{ steps.new_version.outputs.version }}..."
           git tag -a ${{ steps.new_version.outputs.version }} -m "Release ${{ steps.new_version.outputs.version }}"
+          
+          echo "📤 Enviando tag para o repositório remoto..."
           git push origin ${{ steps.new_version.outputs.version }}
       
+      - name: Verificar workflow de build
+        run: |
+          echo "⏳ Aguardando o início do workflow de build..."
+          sleep 10  # Dar tempo para o webhook da tag ser processado
+          
+          # Tentar obter o status do workflow de build
+          WORKFLOW_STATUS=$(curl -s \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/build.yml/runs?event=push&branch=${{ steps.new_version.outputs.version }}" | 
+            jq -r '.workflow_runs[0].status')
+            
+          echo "Status do workflow de build: ${WORKFLOW_STATUS:-não encontrado}"
+            
       - name: Resumo da versão
         run: |
           echo "🎉 Nova versão criada: ${{ steps.new_version.outputs.version }}"
           echo "🏷️ Tipo de incremento: ${{ steps.increment_type.outputs.type }}"
           echo "🔗 Release será criada em: https://github.com/${{ github.repository }}/releases/tag/${{ steps.new_version.outputs.version }}"
+          echo ""
+          echo "Importante: Você pode verificar o progresso do build em:"
+          echo "https://github.com/${{ github.repository }}/actions/workflows/build.yml"
