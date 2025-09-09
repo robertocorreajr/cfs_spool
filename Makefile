@@ -4,17 +4,12 @@ LDFLAGS = -ldflags "-s -w -X main.version=$(VERSION)"
 
 # Default target
 .PHONY: all
-all: build-cli build-web
+all: build-app
 
-# Build CLI for current platform
-.PHONY: build-cli
-build-cli:
-	CGO_ENABLED=1 go build $(LDFLAGS) -o bin/cfs-spool-cli cmd/cfs-spool/main.go
-
-# Build web server for current platform  
-.PHONY: build-web
-build-web:
-	CGO_ENABLED=1 go build $(LDFLAGS) -o bin/cfs-spool-web cmd/web-server/main.go
+# Build web app for current platform  
+.PHONY: build-app
+build-app:
+	CGO_ENABLED=1 go build $(LDFLAGS) -o bin/cfs-spool-app cmd/app/main.go
 
 # Build for all platforms
 .PHONY: build-all
@@ -23,24 +18,19 @@ build-all: clean
 	@mkdir -p dist
 	
 	# Windows AMD64
-	GOOS=windows GOARCH=amd64 CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc go build $(LDFLAGS) -o dist/cfs-spool-cli-windows-amd64.exe cmd/cfs-spool/main.go
-	GOOS=windows GOARCH=amd64 CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc go build $(LDFLAGS) -o dist/cfs-spool-web-windows-amd64.exe cmd/web-server/main.go
+	GOOS=windows GOARCH=amd64 CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc go build $(LDFLAGS) -o dist/cfs-spool-app-windows-amd64.exe cmd/app/main.go
 	
 	# Linux AMD64
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build $(LDFLAGS) -o dist/cfs-spool-cli-linux-amd64 cmd/cfs-spool/main.go
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build $(LDFLAGS) -o dist/cfs-spool-web-linux-amd64 cmd/web-server/main.go
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build $(LDFLAGS) -o dist/cfs-spool-app-linux-amd64 cmd/app/main.go
 	
 	# Linux ARM64
-	GOOS=linux GOARCH=arm64 CGO_ENABLED=1 CC=aarch64-linux-gnu-gcc go build $(LDFLAGS) -o dist/cfs-spool-cli-linux-arm64 cmd/cfs-spool/main.go
-	GOOS=linux GOARCH=arm64 CGO_ENABLED=1 CC=aarch64-linux-gnu-gcc go build $(LDFLAGS) -o dist/cfs-spool-web-linux-arm64 cmd/web-server/main.go
+	GOOS=linux GOARCH=arm64 CGO_ENABLED=1 CC=aarch64-linux-gnu-gcc go build $(LDFLAGS) -o dist/cfs-spool-app-linux-arm64 cmd/app/main.go
 	
 	# macOS AMD64
-	GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build $(LDFLAGS) -o dist/cfs-spool-cli-darwin-amd64 cmd/cfs-spool/main.go
-	GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build $(LDFLAGS) -o dist/cfs-spool-web-darwin-amd64 cmd/web-server/main.go
+	GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build $(LDFLAGS) -o dist/cfs-spool-app-darwin-amd64 cmd/app/main.go
 	
 	# macOS ARM64 (Apple Silicon)
-	GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 go build $(LDFLAGS) -o dist/cfs-spool-cli-darwin-arm64 cmd/cfs-spool/main.go
-	GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 go build $(LDFLAGS) -o dist/cfs-spool-web-darwin-arm64 cmd/web-server/main.go
+	GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 go build $(LDFLAGS) -o dist/cfs-spool-app-darwin-arm64 cmd/app/main.go
 
 # Create release packages
 .PHONY: package
@@ -50,10 +40,10 @@ package: build-all
 	
 	# Windows AMD64
 	@mkdir -p tmp/cfs-spool-windows-amd64
-	@cp dist/cfs-spool-*-windows-amd64.exe tmp/cfs-spool-windows-amd64/
+	@cp dist/cfs-spool-app-windows-amd64.exe tmp/cfs-spool-windows-amd64/
 	@cp -r web tmp/cfs-spool-windows-amd64/
 	@cp README.md tmp/cfs-spool-windows-amd64/
-	@echo '@echo off\necho Starting CFS Spool Web Interface...\nstart http://localhost:8080\ncfs-spool-web-windows-amd64.exe' > tmp/cfs-spool-windows-amd64/start.bat
+	@echo '@echo off\necho Starting CFS Spool Web Interface...\nstart http://localhost:8080\ncfs-spool-app-windows-amd64.exe' > tmp/cfs-spool-windows-amd64/start.bat
 	@cd tmp && zip -r ../releases/cfs-spool-windows-amd64.zip cfs-spool-windows-amd64/
 	
 	# Linux AMD64
@@ -83,15 +73,10 @@ package: build-all
 test:
 	go test -v ./...
 
-# Run web server
-.PHONY: run-web
-run-web: build-web
-	./bin/cfs-spool-web
-
-# Run CLI help
-.PHONY: run-cli
-run-cli: build-cli
-	./bin/cfs-spool-cli
+# Run application
+.PHONY: run
+run: build-app
+	./bin/cfs-spool-app
 
 # Clean build artifacts
 .PHONY: clean

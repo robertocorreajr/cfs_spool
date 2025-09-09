@@ -13,11 +13,8 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the web server
-RUN CGO_ENABLED=1 GOOS=linux go build -a -ldflags '-linkmode external -extldflags "-static"' -o cfs-spool-web cmd/web-server/main.go
-
-# Build the CLI tool
-RUN CGO_ENABLED=1 GOOS=linux go build -a -ldflags '-linkmode external -extldflags "-static"' -o cfs-spool-cli cmd/cfs-spool/main.go
+# Build the application
+RUN CGO_ENABLED=1 GOOS=linux go build -a -ldflags '-linkmode external -extldflags "-static"' -o cfs-spool-app cmd/app/main.go
 
 # Runtime stage
 FROM alpine:latest
@@ -28,11 +25,10 @@ RUN apk add --no-cache pcsc-lite pcsc-lite-libs
 WORKDIR /app
 
 # Copy built binaries
-COPY --from=builder /app/cfs-spool-web .
-COPY --from=builder /app/cfs-spool-cli .
+COPY --from=builder /app/cfs-spool-app .
 COPY --from=builder /app/web ./web/
 
 EXPOSE 8080
 
 # Start PC/SC daemon and web server
-CMD ["sh", "-c", "pcscd && ./cfs-spool-web"]
+CMD ["sh", "-c", "pcscd && ./cfs-spool-app"]

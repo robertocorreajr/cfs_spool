@@ -11,18 +11,13 @@ O CFS Spool é uma aplicação completa desenvolvida em Go que oferece tanto int
 
 ## ✨ Funcionalidades
 
-### 🖥️ Interface Web (Principal)
-- 🎨 **Seletor visual de cores**: Paleta de 35 cores predefinidas com preview em tempo real
+### 🖥️ Interface Web
+- 🎨 **Seletor avançado de cores**: Escolha entre 35 cores predefinidas ou use o seletor de cores para qualquer cor personalizada
 - 🧠 **Lógica inteligente**: Auto-seleção de fornecedor baseado no material escolhido
 - 📝 **Preenchimento automático**: Campos opcionais com padding automático
 - 📖 **Leitura visual**: Preview das cores lidas das tags existentes
 - 🔄 **Interface responsiva**: Funciona em desktop e mobile
-
-### 📟 CLI (Linha de Comando)
-- 📖 **Leitura de tags CFS**: Decodifica informações completas do filamento
-- ✏️ **Gravação de tags**: Programa novas tags com dados customizados
-- 🔐 **Descriptografia AES-ECB**: Suporte completo ao sistema de criptografia Creality
-- 🔧 **Modo debug**: Exibição de dados técnicos para desenvolvimento
+- � **Criptografia/descriptografia AES-ECB**: Suporte completo ao sistema de criptografia Creality
 - 🔄 **Autenticação robusta**: Múltiplos métodos de fallback para leitura
 
 ### 🛠️ Recursos Avançados
@@ -60,11 +55,8 @@ Baixe a versão mais recente dos instaladores nativos:
 git clone https://github.com/robertocorreajr/cfs_spool.git
 cd cfs_spool
 
-# Interface Web (principal)
-go build -o cfs-spool-web ./cmd/app
-
-# CLI tradicional
-go build -o cfs-spool-cli ./cmd/cfs-spool
+# Compilar aplicativo web
+go build -o cfs-spool-app ./cmd/app
 ```
 
 ## 📱 Uso
@@ -73,7 +65,7 @@ go build -o cfs-spool-cli ./cmd/cfs-spool
 
 1. **Executar aplicação**:
    ```bash
-   ./cfs-spool-web
+   ./cfs-spool-app
    # ou no Windows: CFS-Spool.exe
    ```
 
@@ -85,7 +77,10 @@ go build -o cfs-spool-cli ./cmd/cfs-spool
 
 #### 🎨 Recursos da Interface Web
 
-- **Paleta de cores**: 35 cores predefinidas com preview visual
+- **Seleção de cores**:
+  - 35 cores predefinidas com preview visual
+  - Seletor de cores para escolher qualquer cor personalizada
+  - Preview em tempo real da cor selecionada
 - **Preenchimento inteligente**: 
   - Lote vazio → `000`
   - Serial vazio → `000001`
@@ -94,19 +89,6 @@ go build -o cfs-spool-cli ./cmd/cfs-spool
   - Material Generic → Fornecedor Generic (automático)
   - Material Creality → Fornecedor 0276 (Creality)
   - Filtragem de materiais por fornecedor
-
-### 📟 Interface CLI
-
-```bash
-# Leitura básica
-./cfs-spool-cli read-tag
-
-# Modo debug (dados técnicos)
-./cfs-spool-cli read-tag -debug
-
-# Gravação de tag
-./cfs-spool-cli write-tag -batch "1A5" -material "04001" -color "FF40130"
-```
 
 ### Exemplo de Saída
 
@@ -150,12 +132,8 @@ go build -o cfs-spool-cli ./cmd/cfs-spool
 ```
 cfs-spool/
 ├── cmd/
-│   ├── app/                # 🖥️ Interface Web (principal)
-│   │   └── main.go         # Servidor web com API REST
-│   ├── cfs-spool/          # 📟 CLI tradicional
-│   │   ├── main.go         # Interface de linha de comando
-│   │   └── write_tag.go    # Comandos de leitura/escrita
-│   └── web-server/         # (deprecado)
+│   └── app/                # 🖥️ Aplicativo Web
+│       └── main.go         # Servidor web com API REST
 ├── internal/
 │   ├── creality/           # Lógica específica da Creality
 │   │   ├── crypto.go       # Criptografia AES-ECB
@@ -293,14 +271,28 @@ A interface web inclui 35 cores predefinidas baseadas no sistema Creality:
 | **Cinzas** | #474747, #668798, #B1BEC6, #58636E |
 | **Especiais** | #F2EFCE, #FFFFFF, #000000 |
 
-## 🚀 Releases e Versioning
+## 🚀 Releases e Versionamento
 
+- **v2.2.0+**: Versão apenas web com seletor de cores avançado
 - **v1.2.0+**: Interface web completa com paleta de cores
 - **v1.1.1**: Correção crítica na derivação de chaves
 - **v1.1.0**: Primeira versão com instaladores nativos
-- **v1.0.x**: Versões CLI básicas
+- **v1.0.x**: Versões CLI básicas (descontinuadas)
 
-### 📦 Sistema de Build Automático
+### 📦 Sistema de Tags e Build Automático
+
+#### 🏷️ Tagueamento Automático de Versões
+
+O projeto inclui tagueamento automático de versões quando código é enviado para a branch principal:
+
+- 🔄 **Auto-incremento**: Versão patch aumenta automaticamente
+- 🚀 **Versionamento Semântico**: Controle o tipo de versão usando flags na mensagem de commit:
+  - `git commit -m "Mensagem #patch"` - incrementa patch (v1.0.0 → v1.0.1)
+  - `git commit -m "Mensagem #minor"` - incrementa minor (v1.0.0 → v1.1.0)
+  - `git commit -m "Mensagem #major"` - incrementa major (v1.0.0 → v2.0.0)
+- ⚙️ **Acionamento Manual**: Disponível pela interface do GitHub Actions
+
+#### 🏗️ Pipeline de Build Automático
 
 Cada tag `v*` gera automaticamente:
 - 🍎 Instalador DMG para macOS (com ícone customizado)
@@ -310,17 +302,18 @@ Cada tag `v*` gera automaticamente:
 
 ## ❓ FAQ
 
-### Como escolher entre CLI e Interface Web?
+### Como usar a interface web?
 
-- **Interface Web**: Recomendada para uso geral, mais intuitiva
-- **CLI**: Ideal para automação, scripts e desenvolvimento
+- Inicie o aplicativo usando `./cfs-spool-app`
+- Acesse http://localhost:8080 em seu navegador
+- Use a interface intuitiva para leitura e gravação de tags
 
-### A paleta de cores é limitada?
+### Como escolher cores personalizadas?
 
-Não! Você pode:
-- Escolher uma das 35 cores predefinidas (clique na paleta)
-- Digitar qualquer código hex manualmente no campo de texto
-- Usar o seletor de cor (clique no quadrado colorido)
+Você tem total flexibilidade:
+- Escolha uma das 35 cores predefinidas clicando na paleta abaixo do campo de texto
+- Digite qualquer código hexadecimal manualmente no campo de texto (6 dígitos)
+- Clique no quadrado colorido à esquerda do campo de texto para abrir o seletor de cores e escolher qualquer cor do espectro
 
 ### Campos opcionais não funcionam?
 
@@ -350,13 +343,10 @@ Contribuições são bem-vindas! Por favor:
 ### 🔧 Desenvolvimento Local
 
 ```bash
-# Interface Web
+# Executar Aplicativo Web
 go run cmd/app/main.go
 
-# CLI
-go run cmd/cfs-spool/main.go read-tag
-
-# Testes
+# Executar Testes
 go run tests/test_read_diagnosis.go
 ```
 

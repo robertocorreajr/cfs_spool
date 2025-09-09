@@ -223,7 +223,7 @@
             height: 40px;
             border-radius: 8px;
             border: 2px solid #e9ecef;
-            background: #f8f9fa;
+            background: #000000;
             cursor: pointer;
             transition: all 0.3s;
             display: flex;
@@ -235,16 +235,31 @@
         .color-preview:hover {
             border-color: #667eea;
             transform: scale(1.05);
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
         }
         
-        .color-preview::before {
-            content: '🎨';
-            font-size: 18px;
-            opacity: 0.6;
+        input[type="color"] {
+            opacity: 0;
+            position: absolute;
+            width: 0;
+            height: 0;
+            padding: 0;
+            margin: 0;
+            border: none;
+            pointer-events: none;
         }
         
-        .color-preview.has-color::before {
-            display: none;
+        .color-picker-wrapper {
+            position: relative;
+            margin-top: 10px;
+        }
+        
+        .color-picker-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            font-size: 0.9em;
+            color: #2c3e50;
         }
         
         .tag-color-preview {
@@ -404,10 +419,13 @@
                             <div class="color-input-section">
                                 <div id="color-preview" class="color-preview" onclick="openColorPicker()"></div>
                                 <input type="text" id="color" placeholder="Ex: FF4010" maxlength="6" onchange="updateColorPreview()" required>
+                                <!-- O color picker será criado dinamicamente quando necessário -->
+                                <div id="color-picker-container"></div>
                             </div>
-                            <div class="field-limit-info">6 caracteres hexadecimais (sem #). O sistema adicionará automaticamente um '0' no início.</div>
+                            <div class="field-limit-info">6 caracteres hexadecimais (sem #). O sistema adicionará automaticamente um '0' no início.<br>
+                            Clique no quadrado colorido para escolher qualquer cor ou selecione uma cor pré-definida abaixo.</div>
+                            
                             <div id="color-palette" class="color-palette"></div>
-                            <input type="color" id="color-picker" onchange="updateColorHex()" style="display: none;">
                         </div>
                     </div>
                     
@@ -476,12 +494,20 @@
                 const response = await fetch('/api/options');
                 options = await response.json();
                 
+                // Limpar selects antes de popular para evitar duplicações
+                document.getElementById('supplier').innerHTML = '<option value="">Selecione...</option>';
+                document.getElementById('material').innerHTML = '<option value="">Selecione...</option>';
+                document.getElementById('length').innerHTML = '<option value="">Selecione...</option>';
+                
+                // Popular selects com dados do servidor
                 populateSelect('supplier', options.vendors, 'code', 'name');
                 populateSelect('material', options.materials, 'code', 'name');
                 populateSelect('length', options.lengths, 'code', 'name');
                 
                 // Adicionar eventos para lógica de fornecedor/material
                 setupSupplierMaterialLogic();
+                
+                console.log('Opções carregadas com sucesso');
                 
             } catch (error) {
                 console.error('Erro ao carregar opções:', error);
@@ -493,15 +519,23 @@
             const supplierSelect = document.getElementById('supplier');
             const materialSelect = document.getElementById('material');
             
-            // Evento quando supplier é alterado
-            supplierSelect.addEventListener('change', function() {
+            // Remover eventos anteriores para evitar duplicação
+            const newSupplierSelect = supplierSelect.cloneNode(true);
+            const newMaterialSelect = materialSelect.cloneNode(true);
+            supplierSelect.parentNode.replaceChild(newSupplierSelect, supplierSelect);
+            materialSelect.parentNode.replaceChild(newMaterialSelect, materialSelect);
+            
+            // Evento quando fornecedor é alterado - filtra a lista de materiais
+            newSupplierSelect.addEventListener('change', function() {
                 filterMaterialsBySupplier();
             });
             
-            // Evento quando material é alterado
-            materialSelect.addEventListener('change', function() {
+            // Evento quando material é alterado - seleciona o fornecedor apropriado
+            newMaterialSelect.addEventListener('change', function() {
                 autoSelectSupplierFromMaterial();
             });
+            
+            console.log('Eventos de fornecedor/material configurados');
         }
         
         // Filtrar materiais por fornecedor
@@ -510,53 +544,7 @@
             const materialSelect = document.getElementById('material');
             const currentMaterial = materialSelect.value;
 
-            // Remover todas as opções exceto a primeira
-            while (materialSelect.children.length > 1) {
-                materialSelect.removeChild(materialSelect.lastChild);
-            }
-
-            // Mostrar todos os materiais (removido filtro por fornecedor)
-            const filteredMaterials = options.materials;
-
-            // Repopular com todos os materiais
-            filteredMaterials.forEach(item => {
-                const option = document.createElement('option');
-                option.value = item.code;
-                option.textContent = item.name;
-                materialSelect.appendChild(option);
-            });
-
-            // Tentar restaurar a seleção anterior se possível
-            if (filteredMaterials.some(m => m.code === currentMaterial)) {
-                materialSelect.value = currentMaterial;
-            } else {
-                materialSelect.value = '';
-            }
-        }
-        
-        // Auto-selecionar fornecedor baseado no material
-        function autoSelectSupplierFromMaterial() {
-            const material = document.getElementById('material').value;
-            const supplierSelect = document.getElementById('supplier');
-
-            if (!material) return;
-
-            // Encontrar o material selecionado
-            const selectedMaterial = options.materials.find(m => m.code === material);
-
-            if (selectedMaterial) {
-                if (selectedMaterial.brand === 'Generic') {
-                    supplierSelect.value = '0000'; // Genérico
-                } else if (selectedMaterial.brand === 'Creality') {
-                    supplierSelect.value = '0276'; // Creality
-                }
-            }
-        }        // Filtrar materiais por fornecedor
-        function filterMaterialsBySupplier() {
-            const supplier = document.getElementById('supplier').value;
-            const materialSelect = document.getElementById('material');
-
-            // Limpar seleção atual
+            // Limpar seleção atual temporariamente
             materialSelect.value = '';
 
             // Remover todas as opções exceto a primeira
@@ -564,16 +552,35 @@
                 materialSelect.removeChild(materialSelect.lastChild);
             }
 
-            // Mostrar todos os materiais (removido filtro por fornecedor) 
-            const filteredMaterials = options.materials;
+            // Filtrar materiais com base no fornecedor selecionado
+            let filteredMaterials;
+            if (supplier === '0000') { // Genérico
+                // Mostrar apenas materiais genéricos (códigos < 04xxx)
+                filteredMaterials = options.materials.filter(m => 
+                    parseInt(m.code.substring(0, 2)) < 4
+                );
+            } else if (supplier === '0276') { // Creality
+                // Mostrar apenas materiais Creality (códigos 04xxx+)
+                filteredMaterials = options.materials.filter(m => 
+                    parseInt(m.code.substring(0, 2)) >= 4
+                );
+            } else {
+                // Se não houver fornecedor selecionado ou outro caso, mostrar todos
+                filteredMaterials = options.materials;
+            }
 
-            // Repopular com todos os materiais
+            // Repopular com os materiais filtrados
             filteredMaterials.forEach(item => {
                 const option = document.createElement('option');
                 option.value = item.code;
                 option.textContent = item.name;
                 materialSelect.appendChild(option);
             });
+            
+            // Tentar restaurar a seleção anterior se possível
+            if (currentMaterial && filteredMaterials.some(m => m.code === currentMaterial)) {
+                materialSelect.value = currentMaterial;
+            }
         }
         
         // Auto-selecionar fornecedor baseado no material
@@ -587,15 +594,12 @@
             const selectedMaterial = options.materials.find(m => m.code === material);
 
             if (selectedMaterial) {
-                if (selectedMaterial.brand === 'Generic') {
-                    supplierSelect.value = '0000'; // Genérico
-                } else if (selectedMaterial.brand === 'Creality') {
-                    supplierSelect.value = '0276'; // Creality
+                // Inferir fornecedor com base no código do material
+                if (parseInt(material.substring(0, 2)) < 4) {
+                    supplierSelect.value = '0000'; // Genérico (códigos 00xxx, 01xxx, 02xxx, 03xxx)
+                } else {
+                    supplierSelect.value = '0276'; // Creality (códigos 04xxx+)
                 }
-                // Atualizar lista de materiais baseado no fornecedor
-                filterMaterialsBySupplier();
-                // Reselecionar o material
-                document.getElementById('material').value = material;
             }
         }
         
@@ -616,15 +620,22 @@
             document.getElementById('date').value = today;
         }
         
-        // Atualizar cor hex baseado no picker
+        // Atualizar cor hex baseado no picker (mantido por compatibilidade)
         function updateColorHex() {
-            const colorPicker = document.getElementById('color-picker');
+            const colorPicker = document.querySelector('input[type="color"]');
+            if (!colorPicker) return;
+            
             const colorHex = document.getElementById('color');
             
             // Converter #RRGGBB para 6 caracteres
             let hex = colorPicker.value.substring(1); // Pega todos os 6 caracteres
             colorHex.value = hex.toUpperCase();
             updateColorPreview();
+            
+            // Desmarca qualquer cor pré-definida selecionada, já que agora temos uma cor personalizada
+            document.querySelectorAll('.color-option').forEach(el => {
+                el.classList.remove('selected');
+            });
         }
         
         // Atualizar preview da cor
@@ -632,22 +643,42 @@
             const colorHex = document.getElementById('color');
             const preview = document.getElementById('color-preview');
             
-            if (colorHex.value.length === 6) {  // <-- Removido "colorHex.value &&"
+            if (colorHex.value.length === 6) {
                 // Usar os 6 caracteres diretos para RGB
                 const rgb = colorHex.value;
                 preview.style.background = `#${rgb}`;
-                preview.classList.add('has-color');
                 
                 // Destacar cor na paleta se corresponder
                 highlightPaletteColor(`#${rgb.toUpperCase()}`);
+                
+                // Ajustar visibilidade do ícone de seletor com base na luminosidade da cor
+                adjustIconVisibility(preview, rgb);
             } else {
-                preview.style.background = '#f8f9fa';
-                preview.classList.remove('has-color');
+                preview.style.background = '#000000';
                 
                 // Remover seleção da paleta
                 document.querySelectorAll('.color-option').forEach(el => {
                     el.classList.remove('selected');
                 });
+            }
+        }
+        
+        // Ajustar visibilidade do ícone com base na luminosidade da cor
+        function adjustIconVisibility(element, hexColor) {
+            // Converter hex para RGB
+            const r = parseInt(hexColor.substring(0, 2), 16);
+            const g = parseInt(hexColor.substring(2, 4), 16);
+            const b = parseInt(hexColor.substring(4, 6), 16);
+            
+            // Calcular luminosidade (percepção humana de brilho)
+            // Formula: 0.299*R + 0.587*G + 0.114*B
+            const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+            
+            // Se a cor for escura, usar ícone mais claro
+            if (luminance < 0.5) {
+                element.style.color = "white";
+            } else {
+                element.style.color = "black";
             }
         }
         
@@ -678,9 +709,58 @@
             return `#${r}${g}${b}`;
         }
         
-        // Abrir color picker
+        // Abrir color picker quando o usuário clica no quadrado de cor
         function openColorPicker() {
-            document.getElementById('color-picker').click();
+            // Obter o valor atual da cor (se houver)
+            const currentColor = document.getElementById('color').value;
+            const colorValue = currentColor && currentColor.length === 6 ? 
+                '#' + currentColor : '#000000';
+            
+            // Criar um novo elemento input[type="color"]
+            const container = document.getElementById('color-picker-container');
+            container.innerHTML = ''; // Limpar qualquer elemento anterior
+            
+            const colorPicker = document.createElement('input');
+            colorPicker.type = 'color';
+            colorPicker.id = 'dynamic-color-picker';
+            colorPicker.value = colorValue;
+            
+            // Adicionar evento para atualizar a cor quando o valor mudar
+            colorPicker.addEventListener('input', function(e) {
+                const newColor = e.target.value.substring(1).toUpperCase();
+                document.getElementById('color').value = newColor;
+                updateColorPreview();
+            });
+            
+            // Adicionar ao DOM e clicar para abrir
+            container.appendChild(colorPicker);
+            
+            // Usamos um pequeno atraso para garantir que o DOM foi atualizado
+            setTimeout(() => {
+                colorPicker.click();
+                
+                // Remover o elemento após um tempo, para que não afete o layout
+                setTimeout(() => {
+                    container.innerHTML = '';
+                }, 1000);
+            }, 10);
+            
+            console.log('Color picker aberto');
+        }
+        
+        // Atualizar cor hex baseado no picker dinâmico
+        function updateColorFromPicker(element) {
+            const colorHex = document.getElementById('color');
+            
+            // Converter #RRGGBB para 6 caracteres
+            let hex = element.value.substring(1); // Pega todos os 6 caracteres
+            colorHex.value = hex.toUpperCase();
+            updateColorPreview();
+            
+            // Desmarca qualquer cor pré-definida selecionada
+            document.querySelectorAll('.color-option').forEach(el => {
+                el.classList.remove('selected');
+            });
         }
         
         // Cores predefinidas baseadas na função Java

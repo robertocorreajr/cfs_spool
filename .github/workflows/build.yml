@@ -37,7 +37,6 @@ jobs:
     
     - name: Build test (current platform)
       run: |
-        CGO_ENABLED=1 go build -v ./cmd/cfs-spool
         CGO_ENABLED=1 go build -v ./cmd/app
   build:
     needs: test
@@ -105,14 +104,12 @@ jobs:
       run: |
         go build -ldflags "-s -w -X main.version=${{ github.ref_name }}" \
           -o cfs-spool-app-${{ matrix.name }}${{ matrix.ext }} ./cmd/app
-        go build -ldflags "-s -w -X main.version=${{ github.ref_name }}" \
-          -o cfs-spool-cli-${{ matrix.name }}${{ matrix.ext }} ./cmd/cfs-spool
       shell: bash
     
     - name: Create package
       run: |
         mkdir -p release/cfs-spool-${{ matrix.name }}
-        cp cfs-spool-*-${{ matrix.name }}${{ matrix.ext }} release/cfs-spool-${{ matrix.name }}/
+        cp cfs-spool-app-${{ matrix.name }}${{ matrix.ext }} release/cfs-spool-${{ matrix.name }}/
         cp -r web release/cfs-spool-${{ matrix.name }}/
         cp README.md release/cfs-spool-${{ matrix.name }}/
         
@@ -125,7 +122,6 @@ jobs:
         echo "2. Connect your RFID reader"
         echo "3. Run: ./cfs-spool-app-${{ matrix.name }}"
         echo "4. Browser will open automatically at: http://localhost:8080"
-        echo "CLI usage: ./cfs-spool-cli-${{ matrix.name }} read-tag"
         EOF
           chmod +x release/cfs-spool-${{ matrix.name }}/install.sh
         elif [[ "${{ matrix.goos }}" == "darwin" ]]; then
@@ -136,7 +132,6 @@ jobs:
         echo "2. Connect your RFID reader"
         echo "3. Run: ./cfs-spool-app-${{ matrix.name }}"
         echo "4. Browser will open automatically at: http://localhost:8080"
-        echo "CLI usage: ./cfs-spool-cli-${{ matrix.name }} read-tag"
         EOF
           chmod +x release/cfs-spool-${{ matrix.name }}/install.sh
         elif [[ "${{ matrix.goos }}" == "windows" ]]; then
@@ -147,7 +142,6 @@ jobs:
         echo 2. Connect your RFID reader
         echo 3. Run: cfs-spool-app-${{ matrix.name }}.exe
         echo 4. Browser will open automatically at: http://localhost:8080
-        echo CLI usage: cfs-spool-cli-${{ matrix.name }}.exe read-tag
         EOF
         fi
         
@@ -255,9 +249,8 @@ jobs:
         mkdir -p "CFS Spool.app/Contents/MacOS"
         mkdir -p "CFS Spool.app/Contents/Resources"
         
-        # Copy binaries
+        # Copy binary
         find installer-workspace -name "cfs-spool-app-*" ! -name "*.zip" | head -1 | xargs -I {} cp {} "CFS Spool.app/Contents/MacOS/cfs-spool"
-        find installer-workspace -name "cfs-spool-cli-*" ! -name "*.zip" | head -1 | xargs -I {} cp {} "CFS Spool.app/Contents/MacOS/cfs-spool-cli"
         
         # Copy web assets
         cp -r installer-workspace/*/web "CFS Spool.app/Contents/Resources/"
@@ -306,7 +299,6 @@ jobs:
         
         # Make executable
         chmod +x "CFS Spool.app/Contents/MacOS/cfs-spool"
-        chmod +x "CFS Spool.app/Contents/MacOS/cfs-spool-cli"
         
         # Create DMG with drag-to-Applications functionality
         create-dmg \
@@ -341,9 +333,8 @@ jobs:
         mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
         mkdir -p AppDir/usr/share/cfs-spool
         
-        # Copy binaries
+        # Copy binary
         find installer-workspace -name "cfs-spool-app-*" ! -name "*.zip" | head -1 | xargs -I {} cp {} AppDir/usr/bin/cfs-spool
-        find installer-workspace -name "cfs-spool-cli-*" ! -name "*.zip" | head -1 | xargs -I {} cp {} AppDir/usr/bin/cfs-spool-cli
         
         # Copy web assets
         cp -r installer-workspace/*/web AppDir/usr/share/cfs-spool/
@@ -374,7 +365,6 @@ jobs:
         
         # Make executable
         chmod +x AppDir/usr/bin/cfs-spool
-        chmod +x AppDir/usr/bin/cfs-spool-cli
         
         # Create AppImage with bundled libraries
         export LD_LIBRARY_PATH="$PWD/AppDir/usr/lib:$LD_LIBRARY_PATH"
@@ -405,10 +395,6 @@ jobs:
         Get-ChildItem installer-workspace -Recurse -Name "cfs-spool-app-*.exe" | ForEach-Object { 
             Write-Host "Found app: $_"
             Copy-Item "installer-workspace\$_" "installer\bin\cfs-spool.exe" -Force
-        }
-        Get-ChildItem installer-workspace -Recurse -Name "cfs-spool-cli-*.exe" | ForEach-Object { 
-            Write-Host "Found CLI: $_"
-            Copy-Item "installer-workspace\$_" "installer\bin\cfs-spool-cli.exe" -Force
         }
         
         # Copy web files
