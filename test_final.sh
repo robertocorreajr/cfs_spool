@@ -5,7 +5,7 @@ echo "=== Teste Final da Interface Web ==="
 # Iniciar servidor em background e aguardar
 cd /Users/roberto/github/cfs_spool
 echo "Iniciando servidor..."
-go run cmd/web-server/main.go &
+go run cmd/app/main.go &
 SERVER_PID=$!
 
 # Aguardar servidor iniciar

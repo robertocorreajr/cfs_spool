@@ -1,26 +1,17 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
-	"os"
-	"os/exec"
-	"os/signal"
-	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/robertocorreajr/cfs_spool/internal/creality"
 	"github.com/robertocorreajr/cfs_spool/internal/rfid"
 )
-
-var version = "dev"
 
 // Estruturas para API
 type ReadResponse struct {
@@ -30,14 +21,12 @@ type ReadResponse struct {
 }
 
 type WriteRequest struct {
-	Batch    string `json:"batch"`
-	Date     string `json:"date"`     // Formato: YYYY-MM-DD
+	Date     string `json:"date"` // Formato: YYYY-MM-DD
 	Supplier string `json:"supplier"`
 	Material string `json:"material"` // Código ou nome
 	Color    string `json:"color"`
-	Length   string `json:"length"`   // Código ou valor em gramas
+	Length   string `json:"length"` // Código ou valor em gramas
 	Serial   string `json:"serial"`
-	Reserve  string `json:"reserve,omitempty"`
 }
 
 type WriteResponse struct {
@@ -48,14 +37,12 @@ type WriteResponse struct {
 
 type TagInfo struct {
 	UID      string `json:"uid"`
-	Batch    string `json:"batch"`
 	Date     string `json:"date"`
 	Supplier string `json:"supplier"`
 	Material string `json:"material"`
 	Color    string `json:"color"`
 	Length   string `json:"length"`
 	Serial   string `json:"serial"`
-	Reserve  string `json:"reserve,omitempty"`
 }
 
 type OptionsResponse struct {
@@ -65,10 +52,8 @@ type OptionsResponse struct {
 }
 
 type MaterialOption struct {
-Code  string `json:"code"`
-Name  string `json:"name"`
-Brand string `json:"brand"`
-Type  string `json:"type"`
+	Code string `json:"code"`
+	Name string `json:"name"`
 }
 
 type VendorOption struct {
@@ -82,74 +67,6 @@ type LengthOption struct {
 	Grams string `json:"grams"`
 }
 
-func main() {
-	fmt.Printf("CFS Spool v%s\n", version)
-	fmt.Println("Iniciando servidor web...")
-
-	// Detectar diretório do executável
-	execPath, err := os.Executable()
-	if err != nil {
-		log.Fatal("Erro ao detectar caminho do executável:", err)
-	}
-	execDir := filepath.Dir(execPath)
-
-	// Buscar diretório web
-	webDir := findWebDir(execDir)
-	if webDir == "" {
-		log.Fatal("Diretório 'web' não encontrado")
-	}
-
-	fmt.Printf("Servindo arquivos de: %s\n", webDir)
-
-	// Configurar servidor HTTP
-	mux := http.NewServeMux()
-
-	// Servir arquivos estáticos
-	fs := http.FileServer(http.Dir(webDir))
-	mux.Handle("/", fs)
-
-	// API endpoints
-	mux.HandleFunc("/api/status", statusHandler)
-	mux.HandleFunc("/api/options", optionsHandler)
-	mux.HandleFunc("/api/read", readTagHandler)
-	mux.HandleFunc("/api/write", writeTagHandler)
-
-	server := &http.Server{
-		Addr:    ":8080",
-		Handler: mux,
-	}
-
-	// Configurar graceful shutdown
-	go func() {
-		sigChan := make(chan os.Signal, 1)
-		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-		<-sigChan
-
-		fmt.Println("\nEncerrando servidor...")
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-
-		if err := server.Shutdown(ctx); err != nil {
-			log.Fatal("Erro ao encerrar servidor:", err)
-		}
-	}()
-
-	// Abrir navegador automaticamente
-	go func() {
-		time.Sleep(1 * time.Second)
-		openBrowser("http://localhost:8080")
-	}()
-
-	fmt.Println("Servidor rodando em: http://localhost:8080")
-	fmt.Println("Pressione Ctrl+C para encerrar")
-
-	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatal("Erro no servidor:", err)
-	}
-
-	fmt.Println("Servidor encerrado.")
-}
-
 // CORS middleware
 func enableCORS(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -157,44 +74,57 @@ func enableCORS(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 }
 
-// Handler para status
-func statusHandler(w http.ResponseWriter, r *http.Request) {
-	enableCORS(w)
-	if r.Method == "OPTIONS" {
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w, `{"status":"running","version":"%s"}`, version)
-}
-
 // Handler para obter opções de dropdowns
-func optionsHandler(w http.ResponseWriter, r *http.Request) {
+func getOptionsHandler(w http.ResponseWriter, r *http.Request) {
 	enableCORS(w)
 	if r.Method == "OPTIONS" {
 		return
 	}
 
-	   materials := []MaterialOption{
-		   {"01001", "Hyper PLA", "Creality", "PLA"},
-		   {"02001", "Hyper PLA-CF", "Creality", "PLA-CF"},
-		   {"06002", "Hyper PETG", "Creality", "PETG"},
-		   {"03001", "Hyper ABS", "Creality", "ABS"},
-		   {"09002", "ENDER FAST PLA", "Creality", "PLA"},
-		   {"04001", "CR-PLA", "Creality", "PLA"},
-		   {"05001", "CR-Silk", "Creality", "PLA"},
-		   {"06001", "CR-PETG", "Creality", "PETG"},
-		   {"07001", "CR-ABS", "Creality", "ABS"},
-		   {"08001", "Ender-PLA", "Creality", "PLA"},
-		   {"09001", "EN-PLA+", "Creality", "PLA"},
-		   {"00001", "Generic PLA", "Generic", "PLA"},
-		   {"00002", "Generic PLA-Silk", "Generic", "PLA"},
-		   {"00003", "Generic PETG", "Generic", "PETG"},
-		   {"00004", "Generic ABS", "Generic", "ABS"},
-		   {"00005", "Generic TPU", "Generic", "TPU"},
-		   {"00006", "Generic PLA-CF", "Generic", "PLA-CF"},
-		   {"00007", "Generic ASA", "Generic", "ASA"},
-	   }
+	materials := []MaterialOption{
+		// Materiais Genéricos (códigos 00xxx)
+		{"00001", "PLA"},
+		{"00002", "PLA-Silk"},
+		{"00003", "PETG"},
+		{"00004", "ABS"},
+		{"00005", "TPU"},
+		{"00006", "PLA-CF"},
+		{"00007", "ASA"},
+		{"00008", "PA"},
+		{"00009", "PA-CF"},
+		{"00010", "BVOH"},
+		{"00012", "HIPS"},
+		{"00013", "PET-CF"},
+		{"00014", "PETG-CF"},
+		{"00015", "PA6-CF"},
+		{"00016", "PAHT-CF"},
+		{"00020", "PET"},
+		{"00021", "PC"},
+
+		// Materiais Hyper (códigos 01xxx-03xxx)
+		{"01001", "Hyper PLA"},
+		{"02001", "Hyper PLA-CF"},
+		{"03001", "Hyper ABS"},
+
+		// Materiais Creality (códigos 04xxx+)
+		{"04001", "CR-PLA"},
+		{"05001", "CR-Silk"},
+		{"06001", "CR-PETG"},
+		{"07001", "CR-ABS"},
+		{"08001", "Ender-PLA"},
+		{"09001", "EN-PLA+"},
+		{"09002", "ENDERFASTPLA"},
+		{"10001", "HP-TPU"},
+		{"10100", "CR-PLA Especial"},
+		{"11001", "CR-Nylon"},
+		{"13001", "CR-PLACarbon"},
+		{"14001", "CR-PLAMatte"},
+		{"15001", "CR-PLAFluo"},
+		{"16001", "CR-TPU"},
+		{"17001", "CR-Wood"},
+		{"18001", "HPUltraPLA"},
+		{"19001", "HP-ASA"},
+	}
 
 	vendors := []VendorOption{
 		{"0276", "Creality"},
@@ -226,7 +156,7 @@ func readTagHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.Method != "POST" {
+	if r.Method != "GET" && r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
@@ -268,16 +198,7 @@ func readTagHandler(w http.ResponseWriter, r *http.Request) {
 		data, err = reader.TryReadBlock(block, rfid.KeyTypeA, "FFFFFFFFFFFF")
 		if err != nil {
 			// Se falhar, tentar key derivada do UID para tags usadas
-			derivedKey, keyErr := creality.DeriveS1KeyFromUID(uid)
-			if keyErr != nil {
-				response := ReadResponse{
-					Success: false,
-					Error:   fmt.Sprintf("Erro ao derivar chave do UID %s: %v", uid, keyErr),
-				}
-				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(response)
-				return
-			}
+			derivedKey := reader.DeriveKeyFromUID(uid)
 			data, err = reader.TryReadBlock(block, rfid.KeyTypeA, derivedKey)
 			if err != nil {
 				response := ReadResponse{
@@ -304,8 +225,8 @@ func readTagHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parsear campos
-	fields, err := creality.ParseFields(decrypted)
+	// Parsear campos com compatibilidade para formatos antigos
+	fields, err := creality.ParseFieldsCompat(decrypted)
 	if err != nil {
 		response := ReadResponse{
 			Success: false,
@@ -316,17 +237,26 @@ func readTagHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Verificar se é uma tag virgem
+	if fields.IsBlankTag() {
+		response := ReadResponse{
+			Success: false,
+			Error:   "Tag virgem detectada. Esta tag não contém dados válidos ou nunca foi gravada. Use a aba 'Gravar Tag' para configurá-la.",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
 	// Preparar resposta
 	tagInfo := &TagInfo{
 		UID:      uid,
-		Batch:    fields.Batch,
 		Date:     fields.FormatDate(),
 		Supplier: fields.GetSupplierName(),
 		Material: fields.GetMaterialName(),
 		Color:    fields.FormatColor(),
 		Length:   fields.FormatLength(),
 		Serial:   fields.Serial,
-		Reserve:  fields.Reserve,
 	}
 
 	response := ReadResponse{
@@ -404,24 +334,30 @@ func writeTagHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Preparar campos
-	fields := creality.Fields{
-		Batch:    req.Batch,
-		Date:     date,
-		Supplier: req.Supplier,
-		Material: materialCode,
-		Color:    req.Color,
-		Length:   lengthCode,
-		Serial:   req.Serial,
-		Reserve:  req.Reserve,
+	// Preparar campos usando a função construtora
+	fields := creality.NewFields()
+	fields.Date = date
+	fields.Supplier = req.Supplier
+	fields.Material = materialCode
+	fields.Length = lengthCode
+	fields.Serial = req.Serial
+
+	// Definir cor garantindo formato correto (0 + 6 caracteres hex)
+	if req.Color != "" {
+		err := fields.SetColor(req.Color)
+		if err != nil {
+			response := WriteResponse{
+				Success: false,
+				Error:   fmt.Sprintf("Erro no formato da cor: %v", err),
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(response)
+			return
+		}
 	}
 
-	if fields.Reserve == "" {
-		fields.Reserve = "00000000000000"
-	}
-
-	// Validar e criar payload
-	payload, err := fields.ASCIIConcat()
+	// Validar e criar payload de 48 bytes (38 dados + 10 padding)
+	payload, err := fields.ASCIIConcat48()
 	if err != nil {
 		response := WriteResponse{
 			Success: false,
@@ -486,33 +422,61 @@ func convertMaterial(material string) string {
 		return material
 	}
 
-	// Mapear nomes para códigos
+	// Mapear nomes para códigos - agora com nomes atualizados
 	materials := map[string]string{
-		"Hyper PLA":       "01001",
-		"Hyper PLA-CF":    "02001",
-		"Hyper PETG":      "06002",
-		"Hyper ABS":       "03001",
-		"ENDER FAST PLA":  "09002",
+		// Materiais genéricos (sem prefixo "Generic")
+		"PLA":      "00001",
+		"PLA-Silk": "00002",
+		"PETG":     "00003",
+		"ABS":      "00004",
+		"TPU":      "00005",
+		"PLA-CF":   "00006",
+		"ASA":      "00007",
+		"PA":       "00008",
+		"PA-CF":    "00009",
+		"BVOH":     "00010",
+		"HIPS":     "00012",
+		"PET-CF":   "00013",
+		"PETG-CF":  "00014",
+		"PA6-CF":   "00015",
+		"PAHT-CF":  "00016",
+		"PET":      "00020",
+		"PC":       "00021",
+
+		// Materiais Hyper
+		"Hyper PLA":    "01001",
+		"Hyper PLA-CF": "02001",
+		"Hyper ABS":    "03001",
+
+		// Materiais Creality
 		"CR-PLA":          "04001",
 		"CR-Silk":         "05001",
 		"CR-PETG":         "06001",
 		"CR-ABS":          "07001",
 		"Ender-PLA":       "08001",
 		"EN-PLA+":         "09001",
-		"Generic PLA":     "00001",
-		"Generic PLA-Silk": "00002",
-		"Generic PETG":    "00003",
-		"Generic ABS":     "00004",
-		"Generic TPU":     "00005",
-		"Generic PLA-CF":  "00006",
-		"Generic ASA":     "00007",
+		"ENDERFASTPLA":    "09002",
+		"HP-TPU":          "10001",
+		"CR-PLA Especial": "10100",
+		"CR-Nylon":        "11001",
+		"CR-PLACarbon":    "13001",
+		"CR-PLAMatte":     "14001",
+		"CR-PLAFluo":      "15001",
+		"CR-TPU":          "16001",
+		"CR-Wood":         "17001",
+		"HPUltraPLA":      "18001",
+		"HP-ASA":          "19001",
+
+		// Manter compatibilidade com nomes antigos se necessário
+		"Generic PLA":  "00001",
+		"Generic ABS":  "00004",
+		"Generic PETG": "00003",
 	}
 
 	if code, ok := materials[material]; ok {
 		return code
 	}
 
-	// Se não encontrar, retornar o próprio código
 	return material
 }
 
@@ -558,49 +522,17 @@ func convertLength(length string) string {
 	return "0053" // Default para 250g
 }
 
-// findWebDir procura o diretório web em locais possíveis
-func findWebDir(execDir string) string {
-	// Locais possíveis para o diretório web
-	candidates := []string{
-		filepath.Join(execDir, "web"),                    // mesmo diretório
-		filepath.Join(execDir, "..", "web"),              // diretório pai
-		filepath.Join(execDir, "Resources", "web"),       // macOS app bundle
-		filepath.Join(execDir, "..", "Resources", "web"), // macOS app bundle variação
-		filepath.Join(execDir, "..", "share", "cfs-spool", "web"), // Linux AppImage
-		"web", // diretório atual
-	}
+func main() {
+	// Servir arquivos estáticos
+	http.Handle("/", http.FileServer(http.Dir("./web/")))
 
-	for _, candidate := range candidates {
-		if info, err := os.Stat(candidate); err == nil && info.IsDir() {
-			// Verificar se contém index.html
-			indexPath := filepath.Join(candidate, "index.html")
-			if _, err := os.Stat(indexPath); err == nil {
-				return candidate
-			}
-		}
-	}
+	// API endpoints
+	http.HandleFunc("/api/options", getOptionsHandler)
+	http.HandleFunc("/api/read", readTagHandler)
+	http.HandleFunc("/api/write", writeTagHandler)
 
-	return ""
-}
+	fmt.Println("🌐 Servidor iniciado em http://localhost:8080")
+	fmt.Println("📱 Interface web disponível no navegador")
 
-// openBrowser abre o navegador padrão
-func openBrowser(url string) {
-	var cmd string
-	var args []string
-
-	switch runtime.GOOS {
-	case "windows":
-		cmd = "rundll32"
-		args = []string{"url.dll,FileProtocolHandler", url}
-	case "darwin":
-		cmd = "open"
-		args = []string{url}
-	case "linux":
-		cmd = "xdg-open"
-		args = []string{url}
-	default:
-		return
-	}
-
-	exec.Command(cmd, args...).Start()
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }

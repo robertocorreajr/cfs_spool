@@ -53,26 +53,16 @@ docker run --rm -p 8080:8080 --privileged -v /dev:/dev ghcr.io/robertocorreajr/c
    - Windows: Double-click `install.bat`
    - macOS/Linux: Run `./install.sh`
 4. Connect your RFID reader
-5. Run `cfs-spool-web-*` to start the web interface
+5. Run `cfs-spool-app-*` to start the application
 6. Open http://localhost:8080 in your browser
 
 ### 💡 Usage Examples
 
-#### Web Interface
 ```bash
-# Start web server
-./cfs-spool-web-{platform}
+# Start application
+./cfs-spool-app-{platform}
 
 # Open browser to http://localhost:8080
-```
-
-#### Command Line
-```bash
-# Read a tag
-./cfs-spool-cli-{platform} read-tag
-
-# Write a tag
-./cfs-spool-cli-{platform} write-tag --material "CR-PLA" --color "FF0000" --length 250
 ```
 
 ### 🆘 Troubleshooting

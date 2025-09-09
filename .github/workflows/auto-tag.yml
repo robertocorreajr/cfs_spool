@@ -1,0 +1,138 @@
+name: Auto Tag
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+      - 'LICENSE'
+      - '.github/workflows/auto-tag.yml'
+  
+  # Permitir acionamento manual através da interface do GitHub
+  workflow_dispatch:
+    inputs:
+      version_increment:
+        description: 'Tipo de incremento de versão'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+        - patch
+        - minor
+        - major
+
+jobs:
+  auto-tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Necessário para obter todas as tags
+      
+      - name: Configurar Git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+      
+      - name: Determinar incremento de versão
+        id: increment_type
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "type=${{ github.event.inputs.version_increment }}" >> $GITHUB_OUTPUT
+          else
+            # Analisar a mensagem do commit para decidir o tipo de incremento
+            COMMIT_MSG=$(git log -1 --pretty=%B)
+            if [[ $COMMIT_MSG == *"#major"* ]]; then
+              echo "type=major" >> $GITHUB_OUTPUT
+            elif [[ $COMMIT_MSG == *"#minor"* ]]; then
+              echo "type=minor" >> $GITHUB_OUTPUT
+            else
+              echo "type=patch" >> $GITHUB_OUTPUT
+            fi
+          fi
+      
+      - name: Obter última tag
+        id: get_tag
+        run: |
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+          
+          # Extrair componentes da versão (remover o "v" inicial e dividir por pontos)
+          VERSION=${LATEST_TAG#v}
+          MAJOR=$(echo $VERSION | cut -d. -f1)
+          MINOR=$(echo $VERSION | cut -d. -f2)
+          PATCH=$(echo $VERSION | cut -d. -f3)
+          
+          echo "major=$MAJOR" >> $GITHUB_OUTPUT
+          echo "minor=$MINOR" >> $GITHUB_OUTPUT
+          echo "patch=$PATCH" >> $GITHUB_OUTPUT
+      
+      - name: Calcular nova versão
+        id: new_version
+        run: |
+          MAJOR=${{ steps.get_tag.outputs.major }}
+          MINOR=${{ steps.get_tag.outputs.minor }}
+          PATCH=${{ steps.get_tag.outputs.patch }}
+          
+          case "${{ steps.increment_type.outputs.type }}" in
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+          esac
+          
+          NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}"
+          echo "version=$NEW_TAG" >> $GITHUB_OUTPUT
+          echo "version_without_v=${MAJOR}.${MINOR}.${PATCH}" >> $GITHUB_OUTPUT
+      
+      - name: Atualizar README com nova versão (se existir)
+        run: |
+          if grep -q "Version:" README.md; then
+            sed -i "s/Version: .*/Version: ${{ steps.new_version.outputs.version_without_v }}/" README.md
+            git add README.md
+          fi
+          
+          if grep -q "Versão:" README.pt-BR.md 2>/dev/null; then
+            sed -i "s/Versão: .*/Versão: ${{ steps.new_version.outputs.version_without_v }}/" README.pt-BR.md
+            git add README.pt-BR.md
+          fi
+      
+      - name: Criar commit para atualização de versão
+        id: commit_version
+        run: |
+          CHANGES_MADE=$(git status --porcelain | wc -l)
+          if [ "$CHANGES_MADE" -gt "0" ]; then
+            git commit -m "Atualizar versão para ${{ steps.new_version.outputs.version }}"
+            echo "changes_made=true" >> $GITHUB_OUTPUT
+          else
+            echo "changes_made=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Enviar alterações ao repositório
+        if: steps.commit_version.outputs.changes_made == 'true'
+        run: git push
+      
+      - name: Criar tag
+        run: |
+          git tag -a ${{ steps.new_version.outputs.version }} -m "Release ${{ steps.new_version.outputs.version }}"
+          git push origin ${{ steps.new_version.outputs.version }}
+      
+      - name: Resumo da versão
+        run: |
+          echo "🎉 Nova versão criada: ${{ steps.new_version.outputs.version }}"
+          echo "🏷️ Tipo de incremento: ${{ steps.increment_type.outputs.type }}"
+          echo "🔗 Release será criada em: https://github.com/${{ github.repository }}/releases/tag/${{ steps.new_version.outputs.version }}"

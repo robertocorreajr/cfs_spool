@@ -1,28 +1,31 @@
 # CFS Spool - Creality RFID Tag Reader/Writer
 
-🏷️ **Complete system for reading and writing Creality File System (CFS) RFID tags**
+🏷️ **Complete system for reading and writing Creality File System (CFS) RFID tags### Project Structure
 
-[![English](https://img.shields.io/badge/lang-en-blue.svg)](README.md)
-[![Portuguese](https://img.shields.io/badge/lang-pt--BR-green.svg)](README.pt-BR.md)
+```
+cfs-spool/
+├── cmd/
+│   └── app/                # 🖥️ Web Application
+│       └── main.go         # Web server with REST APIish](https://img.shields.io/badge/lang-en-blue.svg)](README.md)
+[![Portuguese](https://img.shields.io/badge/lang-pt--BR-green.svg)](README.pt-BR.m### 🚀 Releases and Versioning
 
-## 📋 Description
+- **v2.2.0+**: Web-only version with enhanced color picker
+- **v1.2.0+**: Complete web interface with color palette
+- **v1.1.1**: Critical fix in key derivation
+- **v1.1.0**: First version with native installers
+- **v1.0.x**: Basic CLI versions (deprecated) 📋 Description
 
 CFS Spool is a complete Go application that provides both command-line and web interfaces for interacting with MIFARE Classic RFID tags used in Creality's filament system. The tool allows reading and writing filament spool information such as material, color, batch, manufacturing date, and other metadata stored encrypted on the tags.
 
 ## ✨ Features
 
-### 🖥️ Web Interface (Main)
-- 🎨 **Visual color selector**: 35 predefined colors palette with real-time preview
+### 🖥️ Web Interface
+- 🎨 **Enhanced color selector**: Choose from 35 predefined colors or use the color picker for any custom color
 - 🧠 **Smart logic**: Auto-selection of supplier based on chosen material
 - 📝 **Auto-fill**: Optional fields with automatic padding
 - 📖 **Visual reading**: Preview colors from existing tags
 - 🔄 **Responsive interface**: Works on desktop and mobile
-
-### 📟 CLI (Command Line)
-- 📖 **CFS tag reading**: Decodes complete filament information
-- ✏️ **Tag writing**: Programs new tags with custom data
-- 🔐 **AES-ECB decryption**: Full support for Creality encryption system
-- 🔧 **Debug mode**: Technical data display for development
+- � **AES-ECB encryption/decryption**: Full support for Creality encryption system
 - 🔄 **Robust authentication**: Multiple fallback methods for reading
 
 ### 🛠️ Advanced Features
@@ -60,11 +63,8 @@ Download the latest native installers:
 git clone https://github.com/robertocorreajr/cfs_spool.git
 cd cfs_spool
 
-# Web Interface (main)
-go build -o cfs-spool-web ./cmd/app
-
-# Traditional CLI
-go build -o cfs-spool-cli ./cmd/cfs-spool
+# Build web application
+go build -o cfs-spool-app ./cmd/app
 ```
 
 ## 📱 Usage
@@ -73,7 +73,7 @@ go build -o cfs-spool-cli ./cmd/cfs-spool
 
 1. **Run application**:
    ```bash
-   ./cfs-spool-web
+   ./cfs-spool-app
    # or on Windows: CFS-Spool.exe
    ```
 
@@ -85,7 +85,10 @@ go build -o cfs-spool-cli ./cmd/cfs-spool
 
 #### 🎨 Web Interface Features
 
-- **Color palette**: 35 predefined colors with visual preview
+- **Color selection**: 
+  - 35 predefined colors with visual preview
+  - Color picker for selecting any custom color
+  - Real-time preview of selected color
 - **Smart auto-fill**: 
   - Empty batch → `000`
   - Empty serial → `000001`
@@ -94,19 +97,6 @@ go build -o cfs-spool-cli ./cmd/cfs-spool
   - Generic material → Generic supplier (automatic)
   - Creality material → 0276 supplier (Creality)
   - Material filtering by supplier
-
-### 📟 CLI Interface
-
-```bash
-# Basic reading
-./cfs-spool-cli read-tag
-
-# Debug mode (technical data)
-./cfs-spool-cli read-tag -debug
-
-# Tag writing
-./cfs-spool-cli write-tag -batch "1A5" -material "04001" -color "FF40130"
-```
 
 ### Output Example
 
@@ -151,7 +141,7 @@ cfs-spool/
 │   ├── cfs-spool/          # 📟 Traditional CLI
 │   │   ├── main.go         # Command line interface
 │   │   └── write_tag.go    # Read/write commands
-│   └── web-server/         # (deprecated)
+│   └── web-server/         # (removido na sanitização)
 ├── internal/
 │   ├── creality/           # Creality-specific logic
 │   │   ├── crypto.go       # AES-ECB cryptography
@@ -291,12 +281,26 @@ The web interface includes 35 predefined colors based on the Creality system:
 
 ## 🚀 Releases and Versioning
 
+- **v2.2.0+**: Web-only version with enhanced color picker
 - **v1.2.0+**: Complete web interface with color palette
 - **v1.1.1**: Critical fix in key derivation
 - **v1.1.0**: First version with native installers
 - **v1.0.x**: Basic CLI versions
 
-### 📦 Automatic Build System
+### 📦 Automatic Build and Tag System
+
+#### 🏷️ Automatic Version Tagging
+
+The project includes automatic version tagging when code is pushed to the main branch:
+
+- 🔄 **Auto-incrementing**: Patch version increases automatically
+- 🚀 **Semantic Versioning**: Control version type using commit message flags:
+  - `git commit -m "Mensagem #patch"` - increment patch (v1.0.0 → v1.0.1)
+  - `git commit -m "Mensagem #minor"` - increment minor (v1.0.0 → v1.1.0)
+  - `git commit -m "Mensagem #major"` - increment major (v1.0.0 → v2.0.0)
+- ⚙️ **Manual Triggering**: Available through GitHub Actions interface
+
+#### 🏗️ Automatic Build Pipeline
 
 Each `v*` tag automatically generates:
 - 🍎 DMG installer for macOS (with custom icon)
@@ -306,17 +310,18 @@ Each `v*` tag automatically generates:
 
 ## ❓ FAQ
 
-### How to choose between CLI and Web Interface?
+### How to use the web interface?
 
-- **Web Interface**: Recommended for general use, more intuitive
-- **CLI**: Ideal for automation, scripts, and development
+- Open the application using `./cfs-spool-app` 
+- Access http://localhost:8080 in your browser
+- Use the intuitive interface for reading and writing tags
 
-### Is the color palette limited?
+### How to choose custom colors?
 
-No! You can:
-- Choose one of the 35 predefined colors (click on palette)
-- Type any hex code manually in the text field
-- Use the color picker (click on the colored square)
+You have full flexibility:
+- Choose one of the 35 predefined colors by clicking on the palette below the text field
+- Type any hex code manually in the text field (6 digits)
+- Click on the colored square to the left of the text field to open a color picker and choose any color from the spectrum
 
 ### Optional fields don't work?
 
@@ -346,13 +351,10 @@ Contributions are welcome! Please:
 ### 🔧 Local Development
 
 ```bash
-# Web Interface
+# Run Web Application
 go run cmd/app/main.go
 
-# CLI
-go run cmd/cfs-spool/main.go read-tag
-
-# Tests
+# Run Tests
 go run tests/test_read_diagnosis.go
 ```
 
