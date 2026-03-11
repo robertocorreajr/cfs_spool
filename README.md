@@ -368,5 +368,5 @@ This project is developed for educational and interoperability purposes. It is n
 
 ---
 
-**🏷️ CFS Spool v1.2.0+** - Complete system for Creality RFID tags  
+**🏷️ CFS Spool v2.1.18** - Complete system for Creality RFID tags  
 *Developed with ❤️ in Go*
