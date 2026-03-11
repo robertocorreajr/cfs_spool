@@ -209,10 +209,10 @@ jobs:
         find artifacts -name "*.zip" -type f || echo "No ZIP files found"
         ls -la artifacts/ || echo "No artifacts directory"
         
-        # Extract first ZIP found
-        if [ -f "$(find artifacts -name "*.zip" | head -1)" ]; then
-          echo "Extracting ZIP file..."
-          find artifacts -name "*.zip" | head -1 | xargs -I {} unzip {} -d installer-workspace/
+        # Extract all ZIP files
+        if [ -n "$(find artifacts -name "*.zip" | head -1)" ]; then
+          echo "Extracting ZIP files..."
+          find artifacts -name "*.zip" | xargs -I {} unzip -o {} -d installer-workspace/
           echo "Contents after extraction:"
           ls -la installer-workspace/
         else
@@ -255,11 +255,30 @@ jobs:
         mkdir -p "CFS Spool.app/Contents/MacOS"
         mkdir -p "CFS Spool.app/Contents/Resources"
         
-        # Copy binary
-        find installer-workspace -name "cfs-spool-app-*" ! -name "*.zip" | head -1 | xargs -I {} cp {} "CFS Spool.app/Contents/MacOS/cfs-spool"
+        # Combine macOS binaries into a Universal Binary using lipo if possible
+        echo "Finding macOS binaries..."
+        INTEL_BIN=$(find installer-workspace -name "cfs-spool-app-macos-intel" -type f | head -1)
+        ARM_BIN=$(find installer-workspace -name "cfs-spool-app-macos-apple-silicon" -type f | head -1)
+        
+        if [ -n "$INTEL_BIN" ] && [ -n "$ARM_BIN" ]; then
+          echo "Creating Universal Binary..."
+          lipo -create -output "CFS Spool.app/Contents/MacOS/cfs-spool" "$INTEL_BIN" "$ARM_BIN"
+        elif [ -n "$INTEL_BIN" ]; then
+          echo "Only Intel binary found."
+          cp "$INTEL_BIN" "CFS Spool.app/Contents/MacOS/cfs-spool"
+        elif [ -n "$ARM_BIN" ]; then
+          echo "Only Apple Silicon binary found."
+          cp "$ARM_BIN" "CFS Spool.app/Contents/MacOS/cfs-spool"
+        else
+          # Fallback
+          find installer-workspace -name "cfs-spool-app-*" ! -name "*.zip" | head -1 | xargs -I {} cp {} "CFS Spool.app/Contents/MacOS/cfs-spool"
+        fi
         
         # Copy web assets
-        cp -r installer-workspace/*/web "CFS Spool.app/Contents/Resources/"
+        WEB_DIR=$(find installer-workspace -type d -name "web" | head -1)
+        if [ -n "$WEB_DIR" ]; then
+          cp -r "$WEB_DIR" "CFS Spool.app/Contents/Resources/"
+        fi
         
         # Copy app icon
         cp app.icns "CFS Spool.app/Contents/Resources/app.icns"

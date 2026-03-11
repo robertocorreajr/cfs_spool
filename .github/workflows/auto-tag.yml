@@ -114,13 +114,13 @@ jobs:
       
       - name: Atualizar README com nova versão (se existir)
         run: |
-          if grep -q "Version:" README.md; then
-            sed -i "s/Version: .*/Version: ${{ steps.new_version.outputs.version_without_v }}/" README.md
+          if grep -q "🏷️ CFS Spool v" README.md; then
+            sed -i -E "s/\*\*🏷️ CFS Spool v[0-9]+\.[0-9]+\.[0-9]+[^\*]*\*\*/\*\*🏷️ CFS Spool ${{ steps.new_version.outputs.version }}\*\*/" README.md
             git add README.md
           fi
           
-          if grep -q "Versão:" README.pt-BR.md 2>/dev/null; then
-            sed -i "s/Versão: .*/Versão: ${{ steps.new_version.outputs.version_without_v }}/" README.pt-BR.md
+          if grep -q "🏷️ CFS Spool v" README.pt-BR.md 2>/dev/null; then
+            sed -i -E "s/\*\*🏷️ CFS Spool v[0-9]+\.[0-9]+\.[0-9]+[^\*]*\*\*/\*\*🏷️ CFS Spool ${{ steps.new_version.outputs.version }}\*\*/" README.pt-BR.md
             git add README.pt-BR.md
           fi
       

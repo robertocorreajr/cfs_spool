@@ -68,10 +68,16 @@ if [[ $CONFIRM != "y" && $CONFIRM != "Y" ]]; then
 fi
 
 # Update README with new version (if needed)
-if grep -q "Version:" README.md; then
-    sed -i.bak "s/Version: .*/Version: ${NEW_VERSION#v}/" README.md
+if grep -q "🏷️ CFS Spool v" README.md; then
+    sed -i.bak -E "s/\*\*🏷️ CFS Spool v[0-9]+\.[0-9]+\.[0-9]+[^\*]*\*\*/\*\*🏷️ CFS Spool ${NEW_VERSION}\*\*/" README.md
     rm README.md.bak 2>/dev/null || true
     git add README.md
+fi
+
+if grep -q "🏷️ CFS Spool v" README.pt-BR.md; then
+    sed -i.bak -E "s/\*\*🏷️ CFS Spool v[0-9]+\.[0-9]+\.[0-9]+[^\*]*\*\*/\*\*🏷️ CFS Spool ${NEW_VERSION}\*\*/" README.pt-BR.md
+    rm README.pt-BR.md.bak 2>/dev/null || true
+    git add README.pt-BR.md
 fi
 
 # Create and push tag

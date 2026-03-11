@@ -3,6 +3,7 @@ package creality
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -57,8 +58,8 @@ func (f *Fields) ValidateAndFix() {
 	f.SetReserveFixed()
 	
 	// Garante que Color tenha 7 bytes se não estiver vazio
-	if f.Color != "" && len(f.Color) == 6 && f.Color[0] != '0' {
-		// Se Color tem 6 caracteres mas não começa com 0, adiciona o 0
+	if f.Color != "" && len(f.Color) == 6 {
+		// Se Color tem 6 caracteres, adiciona o 0 obrigatório (independente do primeiro char)
 		f.Color = "0" + f.Color
 	}
 }
@@ -303,15 +304,7 @@ func (f Fields) IsBlankTag() bool {
 	}
 	
 	// Supplier deve ter um código conhecido
-	knownSuppliers := []string{"0276", "0000"}
-	validSupplier := false
-	for _, supplier := range knownSuppliers {
-		if f.Supplier == supplier {
-			validSupplier = true
-			break
-		}
-	}
-	if !validSupplier {
+	if !slices.Contains([]string{"0276", "0000"}, f.Supplier) {
 		return true
 	}
 	
