@@ -58,7 +58,7 @@ jobs:
             name: linux-amd64
             display_name: "Linux"
             deps: sudo apt-get update && sudo apt-get install -y libpcsclite-dev pcscd pcsc-tools
-          - os: macos-13
+          - os: macos-12
             goos: darwin
             goarch: amd64
             name: macos-intel
