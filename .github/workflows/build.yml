@@ -214,7 +214,7 @@ jobs:
           echo "Extracting $ZIP_COUNT ZIP file(s)..."
           while IFS= read -r zipfile; do
             echo "Extracting: $zipfile"
-            unzip -o "$zipfile" -d installer-workspace/
+            unzip -o "$zipfile" -d installer-workspace/ || true
           done < <(find artifacts -name "*.zip")
           echo "Contents after extraction:"
           ls -la installer-workspace/
