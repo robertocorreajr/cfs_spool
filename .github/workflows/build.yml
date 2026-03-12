@@ -198,15 +198,24 @@ jobs:
     
     - name: Prepare installer workspace
       run: |
+        # Install unzip if on Linux
+        if [[ "$RUNNER_OS" == "Linux" ]]; then
+          sudo apt-get install -y unzip
+        fi
+
         mkdir -p installer-workspace
         echo "Looking for ZIP files..."
         find artifacts -name "*.zip" -type f || echo "No ZIP files found"
         ls -la artifacts/ || echo "No artifacts directory"
-        
+
         # Extract all ZIP files
-        if [ -n "$(find artifacts -name "*.zip" | head -1)" ]; then
-          echo "Extracting ZIP files..."
-          find artifacts -name "*.zip" | xargs -I {} unzip -o {} -d installer-workspace/
+        ZIP_COUNT=$(find artifacts -name "*.zip" | wc -l)
+        if [ "$ZIP_COUNT" -gt 0 ]; then
+          echo "Extracting $ZIP_COUNT ZIP file(s)..."
+          while IFS= read -r zipfile; do
+            echo "Extracting: $zipfile"
+            unzip -o "$zipfile" -d installer-workspace/
+          done < <(find artifacts -name "*.zip")
           echo "Contents after extraction:"
           ls -la installer-workspace/
         else
@@ -214,6 +223,7 @@ jobs:
           exit 1
         fi
       shell: bash
+
     
     # macOS DMG Creation
     - name: Create macOS DMG
