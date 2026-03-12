@@ -58,12 +58,6 @@ jobs:
             name: linux-amd64
             display_name: "Linux"
             deps: sudo apt-get update && sudo apt-get install -y libpcsclite-dev pcscd pcsc-tools
-          - os: macos-12
-            goos: darwin
-            goarch: amd64
-            name: macos-intel
-            display_name: "macOS Intel"
-            deps: brew install pcsc-lite
           - os: macos-14
             goos: darwin
             goarch: arm64
@@ -543,7 +537,6 @@ jobs:
           - **Linux 64-bit**: `cfs-spool-linux-amd64.zip`
           
           #### 🍎 macOS
-          - **macOS Intel**: `cfs-spool-macos-intel.zip`
           - **macOS Apple Silicon**: `cfs-spool-macos-apple-silicon.zip`
           
           #### 🪟 Windows
