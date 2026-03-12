@@ -230,7 +230,7 @@ jobs:
       if: matrix.platform == 'macos'
       run: |
         # Install create-dmg
-        brew install create-dmg imagemagick
+        brew install create-dmg imagemagick librsvg
         
         # Generate icons from SVG
         echo "Generating app icons..."
