@@ -489,12 +489,24 @@ jobs:
     
     steps:
     - uses: actions/checkout@v4
-    
+      with:
+        fetch-tags: true
+        fetch-depth: 0
+
+    - name: Resolve release tag
+      id: tag
+      run: |
+        if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+          echo "name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+        else
+          echo "name=$(git describe --tags --abbrev=0)" >> $GITHUB_OUTPUT
+        fi
+
     - name: Download all artifacts
       uses: actions/download-artifact@v4
       with:
         path: artifacts
-    
+
     - name: Organize release files
       run: |
         mkdir -p release-files
@@ -514,77 +526,78 @@ jobs:
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
+        tag_name: ${{ steps.tag.outputs.name }}
         draft: false
         prerelease: false
         generate_release_notes: true
         body: |
-          ## 🎉 CFS Spool ${{ github.ref_name }}
-          
+          ## 🎉 CFS Spool ${{ steps.tag.outputs.name }}
+
           ### 📦 Instaladores Nativos (Recomendado para usuários finais)
-          
+
           #### 🍎 macOS
-          - **macOS Universal**: `cfs-spool-${{ github.ref_name }}.dmg` 
+          - **macOS Universal**: `cfs-spool-${{ steps.tag.outputs.name }}.dmg`
             - Arraste para Applications
             - Execute "CFS Spool"
             - Acesse: http://localhost:8080
-          
-          #### 🐧 Linux  
-          - **Linux Portable**: `cfs-spool-${{ github.ref_name }}.AppImage`
+
+          #### 🐧 Linux
+          - **Linux Portable**: `cfs-spool-${{ steps.tag.outputs.name }}.AppImage`
             - `chmod +x cfs-spool-*.AppImage`
             - `./cfs-spool-*.AppImage`
             - Acesse: http://localhost:8080
-          
+
           #### 🪟 Windows
-          - **Windows Installer**: `cfs-spool-${{ github.ref_name }}-installer.exe`
+          - **Windows Installer**: `cfs-spool-${{ steps.tag.outputs.name }}-installer.exe`
             - Execute como Administrador
             - Siga o assistente de instalação
             - Atalho criado na Área de Trabalho
             - Acesse: http://localhost:8080
-          
+
           ### 📦 Pacotes ZIP (Para desenvolvedores)
-          
+
           #### 🐧 Linux
           - **Linux 64-bit**: `cfs-spool-linux-amd64.zip`
-          
+
           #### 🍎 macOS
           - **macOS Apple Silicon**: `cfs-spool-macos-apple-silicon.zip`
-          
+
           #### 🪟 Windows
           - **Windows 64-bit**: `cfs-spool-windows-amd64.zip`
-          
+
           ### 🚀 Quick Start (Instaladores Nativos)
-          
+
           #### 🍎 macOS:
-          1. Download: `cfs-spool-${{ github.ref_name }}.dmg`
+          1. Download: `cfs-spool-${{ steps.tag.outputs.name }}.dmg`
           2. Abra o DMG e arraste "CFS Spool" para Applications
           3. Conecte seu leitor RFID ACR122U
           4. Execute "CFS Spool" pelo Launchpad
           5. Acesse: http://localhost:8080
-          
+
           #### 🐧 Linux:
-          1. Download: `cfs-spool-${{ github.ref_name }}.AppImage`
+          1. Download: `cfs-spool-${{ steps.tag.outputs.name }}.AppImage`
           2. `chmod +x cfs-spool-*.AppImage`
           3. Conecte seu leitor RFID ACR122U
           4. Execute: `./cfs-spool-*.AppImage`
           5. Acesse: http://localhost:8080
-          
+
           #### 🪟 Windows:
-          1. Download: `cfs-spool-${{ github.ref_name }}-installer.exe`
+          1. Download: `cfs-spool-${{ steps.tag.outputs.name }}-installer.exe`
           2. Execute como Administrador
           3. Siga o assistente de instalação
           4. Conecte seu leitor RFID ACR122U
           5. Execute "CFS Spool" pelo atalho da Área de Trabalho
           6. Acesse: http://localhost:8080
-          
+
           ### ⚙️ Pré-requisitos
-          
+
           - **RFID Reader**: ACR122U ou compatível
           - **Windows**: Drivers PC/SC automáticos
           - **macOS**: PC/SC incluído no sistema
           - **Linux**: `sudo apt install pcscd pcsc-tools`
-          
+
           ### 🆘 Support
-          
+
           - Issues: https://github.com/robertocorreajr/cfs_spool/issues
           - Documentation: https://github.com/robertocorreajr/cfs_spool#readme
         files: |
