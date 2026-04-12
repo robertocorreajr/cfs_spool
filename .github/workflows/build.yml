@@ -41,7 +41,7 @@ jobs:
       run: cd frontend && npm ci && npm run build
 
     - name: Run tests
-      run: go test ./...
+      run: go test -tags webkit2_41 ./...
 
   build:
     needs: test
@@ -102,7 +102,12 @@ jobs:
 
     - name: Build with Wails
       shell: bash
-      run: wails build -ldflags "-X main.version=${{ steps.version.outputs.tag }}" -platform ${{ matrix.platform }}
+      run: |
+        EXTRA_TAGS=""
+        if [ "${{ runner.os }}" = "Linux" ]; then
+          EXTRA_TAGS="-tags webkit2_41"
+        fi
+        wails build -ldflags "-X main.version=${{ steps.version.outputs.tag }}" -platform ${{ matrix.platform }} $EXTRA_TAGS
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
