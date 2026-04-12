@@ -109,10 +109,6 @@ jobs:
         fi
         wails build -ldflags "-X main.version=${{ steps.version.outputs.tag }}" -platform ${{ matrix.platform }} $EXTRA_TAGS
 
-    - name: Ad-hoc codesign macOS app
-      if: runner.os == 'macOS'
-      run: codesign -s - --deep --force "build/bin/CFS Spool.app"
-
     - name: Create macOS DMG
       if: runner.os == 'macOS'
       run: |
@@ -128,6 +124,13 @@ jobs:
         rsvg-convert -w 1024 -h 1024 assets/icons/cfs-spool.svg -o iconset.iconset/icon_512x512@2x.png
         iconutil -c icns iconset.iconset -o app.icns
         cp app.icns "build/bin/CFS Spool.app/Contents/Resources/app.icns"
+
+        # Codesign ad-hoc APÓS todas as modificações no .app bundle
+        # Assinar de dentro para fora (binário primeiro, depois o bundle)
+        codesign -s - --force --options runtime "build/bin/CFS Spool.app/Contents/MacOS/CFS Spool"
+        codesign -s - --force --options runtime "build/bin/CFS Spool.app"
+        # Verificar se a assinatura é válida
+        codesign --verify --verbose "build/bin/CFS Spool.app"
 
         # Gerar background do DMG
         rsvg-convert -w 600 -h 400 assets/dmg-background.svg -o dmg-background.png
@@ -230,6 +233,15 @@ jobs:
           - **macOS**: Abra o DMG e arraste para Applications
           - **Linux/Windows**: Extraia o ZIP e execute o binário `cfs-spool`
           - Conecte o leitor ACR122U RFID
+
+          ### macOS: Aviso de segurança
+
+          Como o app não é assinado com certificado Apple Developer, o macOS pode bloquear a execução.
+          Execute no Terminal para liberar:
+          ```
+          xattr -cr /Applications/CFS\ Spool.app
+          ```
+          Ou clique com botão direito no app → "Abrir" para autorizar manualmente.
 
           ### Prerequisites
 
