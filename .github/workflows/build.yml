@@ -109,6 +109,10 @@ jobs:
         fi
         wails build -ldflags "-X main.version=${{ steps.version.outputs.tag }}" -platform ${{ matrix.platform }} $EXTRA_TAGS
 
+    - name: Ad-hoc codesign macOS app
+      if: runner.os == 'macOS'
+      run: codesign -s - --deep --force "build/bin/CFS Spool.app"
+
     - name: Create macOS DMG
       if: runner.os == 'macOS'
       run: |
