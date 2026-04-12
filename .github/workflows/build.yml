@@ -3,47 +3,46 @@ name: Build and Release
 on:
   push:
     tags:
-      - 'v*'  # Acionar quando uma tag v* for criada
-    branches: 
-      - main
+      - 'v*'
   workflow_run:
     workflows: ["Auto Tag"]
     types:
       - completed
-  pull_request:
-    branches: 
-      - main
 
 permissions:
   contents: write
-  packages: write
 
 env:
-  GO_VERSION: '1.21'
+  GO_VERSION: '1.24'
+  NODE_VERSION: '20'
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
         go-version: ${{ env.GO_VERSION }}
-        cache: false
-    
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+
     - name: Install PC/SC dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y libpcsclite-dev pcscd pcsc-tools
-    
+        sudo apt-get install -y pcscd libpcsclite-dev libgtk-3-dev libwebkit2gtk-4.0-dev
+
+    - name: Install frontend dependencies
+      run: cd frontend && npm ci
+
     - name: Run tests
-      run: go test -v ./internal/... ./cmd/...
-    
-    - name: Build test (current platform)
-      run: |
-        CGO_ENABLED=1 go build -v ./cmd/app
+      run: go test ./...
+
   build:
     needs: test
     runs-on: ${{ matrix.os }}
@@ -52,441 +51,70 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
-            goos: linux
-            goarch: amd64
-            name: linux-amd64
-            display_name: "Linux"
-            deps: sudo apt-get update && sudo apt-get install -y libpcsclite-dev pcscd pcsc-tools
           - os: macos-14
-            goos: darwin
-            goarch: arm64
-            name: macos-apple-silicon
-            display_name: "macOS Apple Silicon"
-            deps: brew install pcsc-lite
+            platform: darwin/arm64
+            name: darwin-arm64
+          - os: ubuntu-latest
+            platform: linux/amd64
+            name: linux-amd64
           - os: windows-latest
-            goos: windows
-            goarch: amd64
+            platform: windows/amd64
             name: windows-amd64
-            display_name: "Windows"
-            deps: echo "Windows PC/SC drivers will be needed"
-            ext: .exe
-    
+
     steps:
     - uses: actions/checkout@v4
-    
+      with:
+        fetch-tags: true
+        fetch-depth: 0
+
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
         go-version: ${{ env.GO_VERSION }}
-        cache: false
-    
-    - name: Install dependencies
-      run: ${{ matrix.deps }}
-      shell: bash
-    
-    - name: Install zip (Unix)
-      if: matrix.goos != 'windows'
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+
+    - name: Install Wails CLI
+      run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+    - name: Install Linux dependencies
+      if: runner.os == 'Linux'
       run: |
-        if [[ "${{ matrix.goos }}" == "linux" ]]; then
-          sudo apt-get install -y zip
-        elif [[ "${{ matrix.goos }}" == "darwin" ]]; then
-          # zip já está disponível no macOS
-          echo "zip already available on macOS"
+        sudo apt-get update
+        sudo apt-get install -y pcscd libpcsclite-dev libgtk-3-dev libwebkit2gtk-4.0-dev
+
+    - name: Install frontend dependencies
+      run: cd frontend && npm ci
+
+    - name: Resolve version tag
+      id: version
+      shell: bash
+      run: |
+        if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+          echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+        else
+          TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
         fi
+
+    - name: Build with Wails
       shell: bash
-    
-    - name: Build binaries
-      env:
-        GOOS: ${{ matrix.goos }}
-        GOARCH: ${{ matrix.goarch }}
-        CGO_ENABLED: 1
-      run: |
-        go build -ldflags "-s -w -X main.version=${{ github.ref_name }}" \
-          -o cfs-spool-app-${{ matrix.name }}${{ matrix.ext }} ./cmd/app
-      shell: bash
-    
-    - name: Create package
-      run: |
-        mkdir -p release/cfs-spool-${{ matrix.name }}
-        cp cfs-spool-app-${{ matrix.name }}${{ matrix.ext }} release/cfs-spool-${{ matrix.name }}/
-        cp -r web release/cfs-spool-${{ matrix.name }}/
-        cp README.md release/cfs-spool-${{ matrix.name }}/
-        
-        # Create platform-specific install script
-        if [[ "${{ matrix.goos }}" == "linux" ]]; then
-          cat > release/cfs-spool-${{ matrix.name }}/install.sh << 'EOF'
-        #!/bin/bash
-        echo "Installing CFS Spool for Linux..."
-        echo "1. Install PC/SC: sudo apt-get install pcscd pcsc-tools libpcsclite1"
-        echo "2. Connect your RFID reader"
-        echo "3. Run: ./cfs-spool-app-${{ matrix.name }}"
-        echo "4. Browser will open automatically at: http://localhost:8080"
-        EOF
-          chmod +x release/cfs-spool-${{ matrix.name }}/install.sh
-        elif [[ "${{ matrix.goos }}" == "darwin" ]]; then
-          cat > release/cfs-spool-${{ matrix.name }}/install.sh << 'EOF'
-        #!/bin/bash
-        echo "Installing CFS Spool for macOS..."
-        echo "1. Install PC/SC: brew install pcsc-lite (optional, usually included)"
-        echo "2. Connect your RFID reader"
-        echo "3. Run: ./cfs-spool-app-${{ matrix.name }}"
-        echo "4. Browser will open automatically at: http://localhost:8080"
-        EOF
-          chmod +x release/cfs-spool-${{ matrix.name }}/install.sh
-        elif [[ "${{ matrix.goos }}" == "windows" ]]; then
-          cat > release/cfs-spool-${{ matrix.name }}/install.bat << 'EOF'
-        @echo off
-        echo Installing CFS Spool for Windows...
-        echo 1. Install PC/SC drivers for your RFID reader
-        echo 2. Connect your RFID reader
-        echo 3. Run: cfs-spool-app-${{ matrix.name }}.exe
-        echo 4. Browser will open automatically at: http://localhost:8080
-        EOF
-        fi
-        
-        chmod +x release/cfs-spool-${{ matrix.name }}/cfs-spool-* 2>/dev/null || true
-      shell: bash
-    
-    - name: Create archive (Unix)
-      if: matrix.goos != 'windows'
-      run: |
-        cd release
-        zip -r ../cfs-spool-${{ matrix.name }}.zip cfs-spool-${{ matrix.name }}/
-      shell: bash
-    
-    - name: Create archive (Windows)
-      if: matrix.goos == 'windows'
-      run: |
-        Compress-Archive -Path "release/cfs-spool-${{ matrix.name }}" -DestinationPath "cfs-spool-${{ matrix.name }}.zip"
-      shell: powershell
-    
-    - name: Upload artifacts
+      run: wails build -ldflags "-X main.version=${{ steps.version.outputs.tag }}" -platform ${{ matrix.platform }}
+
+    - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
         name: cfs-spool-${{ matrix.name }}
-        path: cfs-spool-${{ matrix.name }}.zip
+        path: build/bin/*
 
-  build-native-installers:
-    needs: build
-    runs-on: ${{ matrix.os }}
-    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: macos-latest
-            platform: macos
-            installer_type: dmg
-            artifact_pattern: "cfs-spool-macos*"
-          - os: ubuntu-latest
-            platform: linux
-            installer_type: appimage
-            artifact_pattern: "cfs-spool-linux*"
-          - os: windows-latest
-            platform: windows
-            installer_type: exe
-            artifact_pattern: "cfs-spool-windows*"
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Download platform artifacts
-      uses: actions/download-artifact@v4
-      with:
-        path: artifacts
-    
-    - name: Prepare installer workspace
-      run: |
-        # Install unzip if on Linux
-        if [[ "$RUNNER_OS" == "Linux" ]]; then
-          sudo apt-get install -y unzip
-        fi
-
-        mkdir -p installer-workspace
-        echo "Looking for ZIP files..."
-        find artifacts -name "*.zip" -type f || echo "No ZIP files found"
-        ls -la artifacts/ || echo "No artifacts directory"
-
-        # Extract all ZIP files
-        ZIP_COUNT=$(find artifacts -name "*.zip" | wc -l)
-        if [ "$ZIP_COUNT" -gt 0 ]; then
-          echo "Extracting $ZIP_COUNT ZIP file(s)..."
-          while IFS= read -r zipfile; do
-            echo "Extracting: $zipfile"
-            unzip -o "$zipfile" -d installer-workspace/ || true
-          done < <(find artifacts -name "*.zip")
-          echo "Contents after extraction:"
-          ls -la installer-workspace/
-        else
-          echo "ERROR: No ZIP files found in artifacts"
-          exit 1
-        fi
-      shell: bash
-
-    
-    # macOS DMG Creation
-    - name: Create macOS DMG
-      if: matrix.platform == 'macos'
-      run: |
-        # Install create-dmg
-        brew install create-dmg imagemagick librsvg
-        
-        # Generate icons from SVG
-        echo "Generating app icons..."
-        mkdir -p iconset.iconset
-        
-        # Generate PNG icons in different sizes using rsvg-convert (handles Inkscape SVGs)
-        sizes=(16 32 64 128 256 512 1024)
-        for size in "${sizes[@]}"; do
-          echo "Generating ${size}x${size} icon..."
-          rsvg-convert -w ${size} -h ${size} assets/icons/cfs-spool.svg -o iconset.iconset/icon_${size}x${size}.png
-
-          # Generate 2x versions for retina
-          if [ $size -le 512 ]; then
-            double_size=$((size * 2))
-            rsvg-convert -w ${double_size} -h ${double_size} assets/icons/cfs-spool.svg -o iconset.iconset/icon_${size}x${size}@2x.png
-          fi
-        done
-
-        # Create .icns file
-        iconutil -c icns iconset.iconset -o app.icns
-
-        # Generate DMG background
-        rsvg-convert -w 600 -h 400 assets/dmg-background.svg -o dmg-background.png
-        
-        # Create app bundle structure
-        mkdir -p "CFS Spool.app/Contents/MacOS"
-        mkdir -p "CFS Spool.app/Contents/Resources"
-        
-        # Combine macOS binaries into a Universal Binary using lipo if possible
-        echo "Finding macOS binaries..."
-        INTEL_BIN=$(find installer-workspace -name "cfs-spool-app-macos-intel" -type f | head -1)
-        ARM_BIN=$(find installer-workspace -name "cfs-spool-app-macos-apple-silicon" -type f | head -1)
-        
-        if [ -n "$INTEL_BIN" ] && [ -n "$ARM_BIN" ]; then
-          echo "Creating Universal Binary..."
-          lipo -create -output "CFS Spool.app/Contents/MacOS/cfs-spool" "$INTEL_BIN" "$ARM_BIN"
-        elif [ -n "$INTEL_BIN" ]; then
-          echo "Only Intel binary found."
-          cp "$INTEL_BIN" "CFS Spool.app/Contents/MacOS/cfs-spool"
-        elif [ -n "$ARM_BIN" ]; then
-          echo "Only Apple Silicon binary found."
-          cp "$ARM_BIN" "CFS Spool.app/Contents/MacOS/cfs-spool"
-        else
-          # Fallback
-          find installer-workspace -name "cfs-spool-app-*" ! -name "*.zip" | head -1 | xargs -I {} cp {} "CFS Spool.app/Contents/MacOS/cfs-spool"
-        fi
-        
-        # Copy web assets
-        WEB_DIR=$(find installer-workspace -type d -name "web" | head -1)
-        if [ -n "$WEB_DIR" ]; then
-          cp -r "$WEB_DIR" "CFS Spool.app/Contents/Resources/"
-        fi
-        
-        # Copy app icon
-        cp app.icns "CFS Spool.app/Contents/Resources/app.icns"
-        
-        # Create Info.plist with icon reference
-        cat > "CFS Spool.app/Contents/Info.plist" << 'EOF'
-        <?xml version="1.0" encoding="UTF-8"?>
-        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-        <plist version="1.0">
-        <dict>
-            <key>CFBundleExecutable</key>
-            <string>cfs-spool</string>
-            <key>CFBundleIdentifier</key>
-            <string>com.creality.cfs-spool</string>
-            <key>CFBundleName</key>
-            <string>CFS Spool</string>
-            <key>CFBundleDisplayName</key>
-            <string>CFS Spool</string>
-            <key>CFBundleVersion</key>
-            <string>${{ github.ref_name }}</string>
-            <key>CFBundleShortVersionString</key>
-            <string>${{ github.ref_name }}</string>
-            <key>CFBundlePackageType</key>
-            <string>APPL</string>
-            <key>CFBundleIconFile</key>
-            <string>app</string>
-            <key>LSUIElement</key>
-            <false/>
-            <key>LSApplicationCategoryType</key>
-            <string>public.app-category.utilities</string>
-            <key>NSHighResolutionCapable</key>
-            <true/>
-            <key>NSAppTransportSecurity</key>
-            <dict>
-                <key>NSAllowsLocalNetworking</key>
-                <true/>
-            </dict>
-            <key>NSHumanReadableCopyright</key>
-            <string>© 2025 Creality. All rights reserved.</string>
-        </dict>
-        </plist>
-        EOF
-        
-        # Make executable
-        chmod +x "CFS Spool.app/Contents/MacOS/cfs-spool"
-        
-        # Create DMG with drag-to-Applications functionality
-        create-dmg \
-          --volname "CFS Spool ${{ github.ref_name }}" \
-          --background "dmg-background.png" \
-          --window-pos 200 120 \
-          --window-size 600 400 \
-          --icon-size 100 \
-          --icon "CFS Spool.app" 150 200 \
-          --hide-extension "CFS Spool.app" \
-          --app-drop-link 450 200 \
-          --text-size 16 \
-          "cfs-spool-${{ github.ref_name }}.dmg" \
-          "CFS Spool.app"
-    
-    # Linux AppImage Creation
-    - name: Create Linux AppImage
-      if: matrix.platform == 'linux'
-      run: |
-        # Install dependencies
-        sudo apt-get update
-        sudo apt-get install -y wget file libpcsclite1 libpcsclite-dev
-        
-        # Download linuxdeploy and AppImageTool
-        wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
-        chmod +x linuxdeploy-x86_64.AppImage
-        
-        # Create AppDir structure
-        mkdir -p AppDir/usr/bin
-        mkdir -p AppDir/usr/lib
-        mkdir -p AppDir/usr/share/applications
-        mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
-        mkdir -p AppDir/usr/share/cfs-spool
-        
-        # Copy binary
-        find installer-workspace -name "cfs-spool-app-*" ! -name "*.zip" | head -1 | xargs -I {} cp {} AppDir/usr/bin/cfs-spool
-        
-        # Copy web assets
-        cp -r installer-workspace/*/web AppDir/usr/share/cfs-spool/
-        
-        # Copy PC/SC libraries
-        cp /usr/lib/x86_64-linux-gnu/libpcsclite.so.1 AppDir/usr/lib/ || true
-        cp /lib/x86_64-linux-gnu/libpcsclite.so.1 AppDir/usr/lib/ || true
-        
-        # Create desktop file
-        cat > AppDir/usr/share/applications/cfs-spool.desktop << 'EOF'
-        [Desktop Entry]
-        Type=Application
-        Name=CFS Spool
-        Comment=Creality CFS RFID Tag Reader
-        Exec=cfs-spool
-        Icon=cfs-spool
-        Categories=Utility;
-        Terminal=false
-        EOF
-        
-        # Create simple icon (text-based)
-        cat > AppDir/usr/share/icons/hicolor/256x256/apps/cfs-spool.svg << 'EOF'
-        <svg width="256" height="256" xmlns="http://www.w3.org/2000/svg">
-          <rect width="256" height="256" fill="#1976d2"/>
-          <text x="128" y="140" font-family="Arial" font-size="48" fill="white" text-anchor="middle">CFS</text>
-        </svg>
-        EOF
-        
-        # Make executable
-        chmod +x AppDir/usr/bin/cfs-spool
-        
-        # Create AppImage with bundled libraries
-        export LD_LIBRARY_PATH="$PWD/AppDir/usr/lib:$LD_LIBRARY_PATH"
-        ./linuxdeploy-x86_64.AppImage --appdir AppDir --output appimage --library AppDir/usr/lib/libpcsclite.so.1 || true
-        
-        # Fallback: try without library bundling
-        if [ ! -f *.AppImage ]; then
-          echo "Trying without library bundling..."
-          ./linuxdeploy-x86_64.AppImage --appdir AppDir --output appimage
-        fi
-        
-        # Rename to proper name
-        mv CFS_Spool*.AppImage "cfs-spool-${{ github.ref_name }}.AppImage" || mv *.AppImage "cfs-spool-${{ github.ref_name }}.AppImage"
-    
-    # Windows Installer Creation
-    - name: Create Windows Installer
-      if: matrix.platform == 'windows'
-      run: |
-        # Install NSIS
-        choco install nsis -y
-        
-        # Create installer directory structure
-        New-Item -ItemType Directory -Force -Path "installer\bin"
-        New-Item -ItemType Directory -Force -Path "installer\web"
-        
-        # Copy files with better error handling
-        Write-Host "Copying application files..."
-        Get-ChildItem installer-workspace -Recurse -Name "cfs-spool-app-*.exe" | ForEach-Object { 
-            Write-Host "Found app: $_"
-            Copy-Item "installer-workspace\$_" "installer\bin\cfs-spool.exe" -Force
-        }
-        
-        # Copy web files
-        Get-ChildItem installer-workspace -Recurse -Directory -Name "*" | ForEach-Object { 
-            if (Test-Path "installer-workspace\$_\web") {
-                Write-Host "Copying web files from: $_"
-                Copy-Item -Recurse "installer-workspace\$_\web\*" "installer\web\" -Force
-            }
-        }
-        
-        # Create NSIS script line by line
-        "!define APPNAME `"CFS Spool`"" | Out-File "installer.nsi" -Encoding ASCII
-        "!define COMPANYNAME `"Creality`"" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "!define DESCRIPTION `"Creality CFS RFID Tag Reader`"" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "RequestExecutionLevel admin" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "InstallDir `"`$PROGRAMFILES\CFS Spool`"" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "Name `"CFS Spool`"" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "OutFile `"cfs-spool-${{ github.ref_name }}-installer.exe`"" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "Page components" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "Page directory" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "Page instfiles" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "Section `"CFS Spool`" SecMain" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "    SectionIn RO" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "    SetOutPath `$INSTDIR" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "    File /r `"installer\*`"" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "    WriteUninstaller `"`$INSTDIR\uninstall.exe`"" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "    CreateDirectory `"`$SMPROGRAMS\CFS Spool`"" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "    CreateShortCut `"`$SMPROGRAMS\CFS Spool\CFS Spool.lnk`" `"`$INSTDIR\bin\cfs-spool.exe`"" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "    CreateShortCut `"`$DESKTOP\CFS Spool.lnk`" `"`$INSTDIR\bin\cfs-spool.exe`"" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "SectionEnd" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "Section `"Uninstall`"" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "    Delete `"`$SMPROGRAMS\CFS Spool\CFS Spool.lnk`"" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "    Delete `"`$DESKTOP\CFS Spool.lnk`"" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "    RMDir `"`$SMPROGRAMS\CFS Spool`"" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "    Delete `"`$INSTDIR\uninstall.exe`"" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "    RMDir /r `"`$INSTDIR`"" | Out-File "installer.nsi" -Append -Encoding ASCII
-        "SectionEnd" | Out-File "installer.nsi" -Append -Encoding ASCII
-        
-        # Debug: show the created script
-        Write-Host "Created NSIS script:"
-        Get-Content "installer.nsi"
-        
-        # Build installer
-        & "C:\Program Files (x86)\NSIS\makensis.exe" "installer.nsi"
-      shell: powershell
-    
-    - name: Upload native installer
-      uses: actions/upload-artifact@v4
-      with:
-        name: native-installer-${{ matrix.platform }}
-        path: |
-          *.dmg
-          *.AppImage
-          *-installer.exe
   release:
-    needs: [build, build-native-installers]
+    needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
-    
+
     steps:
     - uses: actions/checkout@v4
       with:
@@ -510,19 +138,16 @@ jobs:
     - name: Organize release files
       run: |
         mkdir -p release-files
-        
-        # ZIP packages
-        find artifacts -name "*.zip" | while read file; do
-          cp "$file" release-files/
+        # Copy all build outputs, preserving directory names for clarity
+        for dir in artifacts/cfs-spool-*/; do
+          platform=$(basename "$dir")
+          # Zip each platform artifact
+          cd "$dir"
+          zip -r "../../release-files/${platform}.zip" .
+          cd ../..
         done
-        
-        # Native installers
-        find artifacts -name "*.dmg" -o -name "*.AppImage" -o -name "*-installer.exe" | while read file; do
-          cp "$file" release-files/
-        done
-        
         ls -la release-files/
-    
+
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
@@ -531,75 +156,31 @@ jobs:
         prerelease: false
         generate_release_notes: true
         body: |
-          ## 🎉 CFS Spool ${{ steps.tag.outputs.name }}
+          ## CFS Spool ${{ steps.tag.outputs.name }}
 
-          ### 📦 Instaladores Nativos (Recomendado para usuários finais)
+          Native desktop application for reading and writing Creality CFS RFID tags.
+          Built with Wails v2 + React + shadcn/ui.
 
-          #### 🍎 macOS
-          - **macOS Universal**: `cfs-spool-${{ steps.tag.outputs.name }}.dmg`
-            - Arraste para Applications
-            - Execute "CFS Spool"
-            - Acesse: http://localhost:8080
+          ### Downloads
 
-          #### 🐧 Linux
-          - **Linux Portable**: `cfs-spool-${{ steps.tag.outputs.name }}.AppImage`
-            - `chmod +x cfs-spool-*.AppImage`
-            - `./cfs-spool-*.AppImage`
-            - Acesse: http://localhost:8080
+          | Platform | File |
+          |----------|------|
+          | macOS (Apple Silicon) | `cfs-spool-darwin-arm64.zip` |
+          | Linux (x86_64) | `cfs-spool-linux-amd64.zip` |
+          | Windows (x86_64) | `cfs-spool-windows-amd64.zip` |
 
-          #### 🪟 Windows
-          - **Windows Installer**: `cfs-spool-${{ steps.tag.outputs.name }}-installer.exe`
-            - Execute como Administrador
-            - Siga o assistente de instalação
-            - Atalho criado na Área de Trabalho
-            - Acesse: http://localhost:8080
+          ### Quick Start
 
-          ### 📦 Pacotes ZIP (Para desenvolvedores)
+          1. Download the ZIP for your platform
+          2. Extract and run the `cfs-spool` binary
+          3. Connect your ACR122U RFID reader
+          4. Read and write Creality filament spool tags
 
-          #### 🐧 Linux
-          - **Linux 64-bit**: `cfs-spool-linux-amd64.zip`
+          ### Prerequisites
 
-          #### 🍎 macOS
-          - **macOS Apple Silicon**: `cfs-spool-macos-apple-silicon.zip`
-
-          #### 🪟 Windows
-          - **Windows 64-bit**: `cfs-spool-windows-amd64.zip`
-
-          ### 🚀 Quick Start (Instaladores Nativos)
-
-          #### 🍎 macOS:
-          1. Download: `cfs-spool-${{ steps.tag.outputs.name }}.dmg`
-          2. Abra o DMG e arraste "CFS Spool" para Applications
-          3. Conecte seu leitor RFID ACR122U
-          4. Execute "CFS Spool" pelo Launchpad
-          5. Acesse: http://localhost:8080
-
-          #### 🐧 Linux:
-          1. Download: `cfs-spool-${{ steps.tag.outputs.name }}.AppImage`
-          2. `chmod +x cfs-spool-*.AppImage`
-          3. Conecte seu leitor RFID ACR122U
-          4. Execute: `./cfs-spool-*.AppImage`
-          5. Acesse: http://localhost:8080
-
-          #### 🪟 Windows:
-          1. Download: `cfs-spool-${{ steps.tag.outputs.name }}-installer.exe`
-          2. Execute como Administrador
-          3. Siga o assistente de instalação
-          4. Conecte seu leitor RFID ACR122U
-          5. Execute "CFS Spool" pelo atalho da Área de Trabalho
-          6. Acesse: http://localhost:8080
-
-          ### ⚙️ Pré-requisitos
-
-          - **RFID Reader**: ACR122U ou compatível
-          - **Windows**: Drivers PC/SC automáticos
-          - **macOS**: PC/SC incluído no sistema
-          - **Linux**: `sudo apt install pcscd pcsc-tools`
-
-          ### 🆘 Support
-
-          - Issues: https://github.com/robertocorreajr/cfs_spool/issues
-          - Documentation: https://github.com/robertocorreajr/cfs_spool#readme
+          - **RFID Reader**: ACR122U or compatible
+          - **Linux**: `sudo apt install pcscd libpcsclite1`
+          - **macOS / Windows**: PC/SC is built-in
         files: |
           release-files/*
       env:

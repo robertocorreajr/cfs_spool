@@ -1,253 +1,212 @@
-# CFS Spool - Creality RFID Tag Reader/Writer
+# CFS Spool - Creality Filament Spool RFID Manager
 
-🏷️ **Complete system for reading and writing Creality File System (CFS) RFID tags### Project Structure
+Native desktop application (Wails v2 + React + shadcn/ui) for reading and writing Creality File System (CFS) RFID tags used in Creality 3D printer filament spools.
 
-```
-cfs-spool/
-├── cmd/
-│   └── app/                # 🖥️ Web Application
-│       └── main.go         # Web server with REST APIish](https://img.shields.io/badge/lang-en-blue.svg)](README.md)
-[![Portuguese](https://img.shields.io/badge/lang-pt--BR-green.svg)](README.pt-BR.m### 🚀 Releases and Versioning
+[![English](https://img.shields.io/badge/lang-en-blue.svg)](README.md)
+[![Portuguese](https://img.shields.io/badge/lang-pt--BR-green.svg)](README.pt-BR.md)
 
-- **v2.2.0+**: Web-only version with enhanced color picker
-- **v1.2.0+**: Complete web interface with color palette
-- **v1.1.1**: Critical fix in key derivation
-- **v1.1.0**: First version with native installers
-- **v1.0.x**: Basic CLI versions (deprecated) 📋 Description
+## Features
 
-CFS Spool is a complete Go application that provides both command-line and web interfaces for interacting with MIFARE Classic RFID tags used in Creality's filament system. The tool allows reading and writing filament spool information such as material, color, batch, manufacturing date, and other metadata stored encrypted on the tags.
+- **Native desktop app** -- no browser or server needed, runs directly on your OS
+- **Enhanced color selector**: 35 predefined colors based on the Creality system + color picker for any custom hex color
+- **Smart logic**: Auto-selection of supplier based on chosen material
+- **Auto-fill**: Optional fields (Batch, Serial) with automatic padding
+- **Visual reading**: Preview colors from existing tags
+- **AES-ECB encryption/decryption**: Full support for Creality encryption system
+- **Robust authentication**: Multiple fallback methods for RFID reading
+- **Key derivation**: Complete algorithm based on tag UID
+- **Compatibility**: Works with new tags (FFFFFFFFFFFF) and used tags (derived key)
 
-## ✨ Features
+## Installation
 
-### 🖥️ Web Interface
-- 🎨 **Enhanced color selector**: Choose from 35 predefined colors or use the color picker for any custom color
-- 🧠 **Smart logic**: Auto-selection of supplier based on chosen material
-- 📝 **Auto-fill**: Optional fields with automatic padding
-- 📖 **Visual reading**: Preview colors from existing tags
-- 🔄 **Responsive interface**: Works on desktop and mobile
-- � **AES-ECB encryption/decryption**: Full support for Creality encryption system
-- 🔄 **Robust authentication**: Multiple fallback methods for reading
+### Ready Downloads (Recommended)
 
-### 🛠️ Advanced Features
-- 🎯 **Key derivation**: Complete algorithm based on tag UID
-- 🔒 **Compatibility**: Works with new tags (FFFFFFFFFFFF) and used tags (derived key)
-- 🧪 **Diagnostic tools**: Complete troubleshooting suite
-- 📦 **Native installers**: DMG for macOS, AppImage for Linux, executable for Windows
+Download the latest release for your platform:
 
-## 🚀 Installation
+**[Releases - GitHub](https://github.com/robertocorreajr/cfs_spool/releases/latest)**
 
-### 📥 Ready Downloads (Recommended)
+- **macOS (Apple Silicon)**: `cfs-spool-darwin-arm64` -- native app, just run it
+- **Linux (x86_64)**: `cfs-spool-linux-amd64` -- native app, just run it
+- **Windows (x86_64)**: `cfs-spool-windows-amd64.exe` -- native app, just run it
 
-Download the latest native installers:
-
-**[⬇️ Releases - GitHub](https://github.com/robertocorreajr/cfs_spool/releases/latest)**
-
-- 🍎 **macOS**: `CFS-Spool-macOS.dmg` (drag-and-drop installer)
-- 🐧 **Linux**: `CFS-Spool-Linux.AppImage` (portable)
-- 🪟 **Windows**: `CFS-Spool-Windows.exe` (installer)
-
-### 🛠️ Manual Compilation
+### Build from Source
 
 #### Prerequisites
 
-- **Go 1.21+**
+- **Go 1.24+**
+- **Node.js 18+**
+- **Wails CLI**: `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
 - **Compatible RFID reader** (tested with ACR122U)
-- **PC/SC Smart Card Daemon** 
-  - macOS: already included
-  - Linux: `sudo apt install pcscd libpcsclite-dev`
-  - Windows: RFID reader driver
+- **PC/SC headers**:
+  - macOS: built-in (no action needed)
+  - Linux: `sudo apt install pcscd libpcsclite-dev libgtk-3-dev libwebkit2gtk-4.0-dev`
+  - Windows: built-in (winscard)
 
-#### Compilation
+#### Build Commands
 
 ```bash
 git clone https://github.com/robertocorreajr/cfs_spool.git
 cd cfs_spool
 
-# Build web application
-go build -o cfs-spool-app ./cmd/app
+# Development mode (hot-reload)
+wails dev
+
+# Production build
+wails build
+
+# Cross-compile all platforms
+make build-all
 ```
 
-## 📱 Usage
+The production binary is output to `build/bin/`.
 
-### 🖥️ Web Interface (Recommended)
+## Usage
 
-1. **Run application**:
-   ```bash
-   ./cfs-spool-app
-   # or on Windows: CFS-Spool.exe
-   ```
+1. Connect your ACR122U RFID reader
+2. Launch the application (double-click or run from terminal)
+3. **Read Tag**: Place a tag on the reader and click "Read Tag"
+4. **Write Tag**: Fill in the fields and click "Write Tag"
 
-2. **Access interface**: Browser opens automatically at `http://localhost:8080`
+### Color Selection
 
-3. **Use interface**:
-   - **"Read Tag" tab**: Place tag on reader and click "Read Tag"
-   - **"Write Tag" tab**: Fill in data and click "Write Tag"
+You have full flexibility for choosing colors:
+- Click one of the **35 predefined colors** from the palette
+- Type any **6-digit hex code** manually in the text field
+- Click the **color picker** square to open a full color spectrum selector
 
-#### 🎨 Web Interface Features
+### Smart Auto-fill
 
-- **Color selection**: 
-  - 35 predefined colors with visual preview
-  - Color picker for selecting any custom color
-  - Real-time preview of selected color
-- **Smart auto-fill**: 
-  - Empty batch → `000`
-  - Empty serial → `000001`
-  - Auto-padding with leading zeros
-- **Smart logic**:
-  - Generic material → Generic supplier (automatic)
-  - Creality material → 0276 supplier (Creality)
-  - Material filtering by supplier
+- Empty batch automatically becomes `000`
+- Empty serial automatically becomes `000001`
+- Automatic padding with leading zeros
 
-### Output Example
+### Smart Logic
 
-```
-╔══════════════════════════════════════════╗
-║           TAG INFORMATION                ║
-╚══════════════════════════════════════════╝
-📦 Batch:       1A5
-📅 Date:        January 20, 2024
-🏭 Supplier:    0276 (Creality)
-🧪 Material:    CR-PLA (standard)
-🎨 Color:       #77BB41 (hex)
-📏 Length:      330cm (1kg filament)
-🔢 Serial:      000001
-```
+- Generic material selects Generic supplier automatically
+- Creality material selects 0276 supplier (Creality) automatically
+- Material list is filtered by selected supplier
 
-## 🛠️ Supported Hardware
+## Supported Hardware
 
-### 🛒 Recommended Hardware (Affiliate Links)
+### Recommended Hardware (Affiliate Links)
 
-- **🏷️ [ACR122U RFID Reader](https://s.click.aliexpress.com/e/_ok8qAl9)** – Reader used in development (compatibility guaranteed)
-- **📇 [MIFARE Classic 1K Tags](https://s.click.aliexpress.com/e/_oBPVnEb)** – Compatible tags tested in the project
+- **[ACR122U RFID Reader](https://s.click.aliexpress.com/e/_ok8qAl9)** -- Reader used in development (compatibility guaranteed)
+- **[MIFARE Classic 1K Tags](https://s.click.aliexpress.com/e/_oBPVnEb)** -- Compatible tags tested in the project
 
 ### Tested RFID Readers
-- **ACR122U** ✅ (recommended)
+- **ACR122U** (recommended)
 - **Other PC/SC readers** (compatibility not guaranteed)
 
 ### Supported Tags
-- **MIFARE Classic 1K** ✅
-- **MIFARE Classic 4K** ✅
-- **Creality CFS Tags** ✅
+- **MIFARE Classic 1K**
+- **MIFARE Classic 4K**
+- **Creality CFS Tags**
 
-## 🔧 Development
+## Development
 
 ### Project Structure
 
 ```
-cfs-spool/
-├── cmd/
-│   ├── app/                # 🖥️ Web Interface (main)
-│   │   └── main.go         # Web server with REST API
-│   ├── cfs-spool/          # 📟 Traditional CLI
-│   │   ├── main.go         # Command line interface
-│   │   └── write_tag.go    # Read/write commands
-│   └── web-server/         # (removido na sanitização)
+cfs_spool/
+├── main.go                 # Wails app entry point
+├── app.go                  # App struct with Wails-bound methods
+├── app_options.go          # Options handler (materials, vendors)
+├── wails.json              # Wails configuration
+├── frontend/               # React + shadcn/ui frontend
+│   ├── src/                # React components and pages
+│   ├── package.json        # Node.js dependencies
+│   ├── tailwind.config.js  # Tailwind CSS config
+│   └── vite.config.ts      # Vite bundler config
 ├── internal/
 │   ├── creality/           # Creality-specific logic
 │   │   ├── crypto.go       # AES-ECB cryptography
 │   │   └── fields.go       # Field parsing and formatting
 │   └── rfid/               # RFID communication
 │       └── reader.go       # PC/SC interface
-├── web/                    # 🎨 Web interface frontend
-│   ├── index.html          # HTML/CSS/JS interface
-│   └── favicon.svg         # Application icon
-├── tests/                  # 🧪 Test tools
-│   ├── test_auth_read.go   # Authentication test
-│   ├── test_basic_read.go  # Basic reading test
-│   ├── test_decode_cfs.go  # Decoding test
-│   └── test_read_diagnosis.go # Complete diagnosis
-├── assets/                 # 🎨 Visual resources
-│   ├── icons/              # Icons for installers
-│   └── dmg-background.svg  # macOS installer background
-├── .github/workflows/      # 🚀 CI/CD
-│   └── build.yml           # Automatic build pipeline
-├── scripts/                # 📦 Release scripts
-│   └── release.sh          # Packaging script
-└── Dockerfile              # 🐳 Docker container
+├── build/                  # Wails build output and assets
+├── tests/                  # Diagnostic tools
+├── assets/                 # Visual resources
+├── .github/workflows/      # CI/CD pipelines
+├── Makefile                # Build shortcuts
+└── go.mod                  # Go module definition
 ```
 
-### REST API (Web Interface)
-
-The web interface exposes a simple REST API:
-
-- `GET /api/status` - Application status
-- `GET /api/options` - Options for dropdowns (materials, suppliers, etc.)
-- `POST /api/read-tag` - RFID tag reading
-- `POST /api/write` - RFID tag writing
-
-### Dependencies
-
-- `github.com/ebfe/scard` - PC/SC interface for RFID communication
-- `crypto/aes` - AES cryptography (standard library)
-- Native web interface (no external dependencies)
-
-### 🧪 Diagnostic Tools
+### Local Development
 
 ```bash
-# Complete RFID reading diagnosis
+# Run in dev mode with hot-reload
+wails dev
+
+# Run Go tests
+go test -v ./internal/... ./...
+
+# RFID diagnostic tools (require hardware)
 go run tests/test_read_diagnosis.go
-
-# Authentication test
 go run tests/test_auth_read.go
-
-# CFS decoding test
 go run tests/test_decode_cfs.go
 ```
 
-## 📊 Technical Reference
+### Dependencies
+
+- `github.com/wailsapp/wails/v2` -- Desktop application framework
+- `github.com/ebfe/scard` -- PC/SC interface for RFID communication
+- `crypto/aes` -- AES cryptography (Go standard library)
+- React + shadcn/ui + Tailwind CSS (frontend)
+
+## Technical Reference
 
 ### Known Vendors
 
-| **Vendor Code** | **Brand / Notes**                                  |
-|:---------------:|:--------------------------------------------------:|
-|  0x0276         | Creality • Hyper • Ender • HP (official lines)    |
-|  0xFFFF         | Generic (any non-official manufacturer)            |
+| **Vendor Code** | **Brand / Notes** |
+|:---:|:---:|
+| 0x0276 | Creality, Hyper, Ender, HP (official lines) |
+| 0xFFFF | Generic (any non-official manufacturer) |
 
 ### Known Materials
 
-| **Material Code** | **Description**       |
-|:-----------------:|:---------------------:|
-|  00001            | Generic PLA           |
-|  00002            | Generic PLA-Silk      |
-|  00003            | Generic PETG          |
-|  00004            | Generic ABS           |
-|  00005            | Generic TPU           |
-|  00006            | Generic PLA-CF        |
-|  00007            | Generic ASA           |
-|  00008            | Generic PA            |
-|  00009            | Generic PA-CF         |
-|  00010            | Generic BVOH          |
-|  00011            | Generic PVA           |
-|  00012            | Generic HIPS          |
-|  00013            | Generic PET-CF        |
-|  00014            | Generic PETG-CF       |
-|  00015            | Generic PA6-CF        |
-|  00016            | Generic PAHT-CF       |
-|  00017            | Generic PPS           |
-|  00018            | Generic PPS-CF        |
-|  00019            | Generic PP            |
-|  00020            | Generic PET           |
-|  00021            | Generic PC            |
-|  01001            | Hyper PLA             |
-|  02001            | Hyper PLA-CF          |
-|  03001            | Hyper ABS             |
-|  04001            | CR-PLA                |
-|  05001            | CR-Silk               |
-|  06001            | CR-PETG               |
-|  06002            | Hyper PETG            |
-|  07001            | CR-ABS                |
-|  08001            | Ender-PLA             |
-|  09001            | EN-PLA+               |
-|  09002            | Ender Fast PLA        |
-|  10001            | HP-TPU                |
-|  11001            | CR-Nylon              |
-|  13001            | CR-PLA Carbon         |
-|  14001            | CR-PLA Matte          |
-|  15001            | CR-PLA Fluo           |
-|  16001            | CR-TPU                |
-|  17001            | CR-Wood               |
-|  18001            | HP Ultra PLA          |
-|  19001            | HP-ASA                |
+| **Material Code** | **Description** |
+|:---:|:---:|
+| 00001 | Generic PLA |
+| 00002 | Generic PLA-Silk |
+| 00003 | Generic PETG |
+| 00004 | Generic ABS |
+| 00005 | Generic TPU |
+| 00006 | Generic PLA-CF |
+| 00007 | Generic ASA |
+| 00008 | Generic PA |
+| 00009 | Generic PA-CF |
+| 00010 | Generic BVOH |
+| 00011 | Generic PVA |
+| 00012 | Generic HIPS |
+| 00013 | Generic PET-CF |
+| 00014 | Generic PETG-CF |
+| 00015 | Generic PA6-CF |
+| 00016 | Generic PAHT-CF |
+| 00017 | Generic PPS |
+| 00018 | Generic PPS-CF |
+| 00019 | Generic PP |
+| 00020 | Generic PET |
+| 00021 | Generic PC |
+| 01001 | Hyper PLA |
+| 02001 | Hyper PLA-CF |
+| 03001 | Hyper ABS |
+| 04001 | CR-PLA |
+| 05001 | CR-Silk |
+| 06001 | CR-PETG |
+| 06002 | Hyper PETG |
+| 07001 | CR-ABS |
+| 08001 | Ender-PLA |
+| 09001 | EN-PLA+ |
+| 09002 | Ender Fast PLA |
+| 10001 | HP-TPU |
+| 11001 | CR-Nylon |
+| 13001 | CR-PLA Carbon |
+| 14001 | CR-PLA Matte |
+| 15001 | CR-PLA Fluo |
+| 16001 | CR-TPU |
+| 17001 | CR-Wood |
+| 18001 | HP Ultra PLA |
+| 19001 | HP-ASA |
 
 ### CFS Tag Format
 
@@ -255,8 +214,17 @@ The Creality CFS system stores data in sectors 1-2 of MIFARE Classic tags:
 
 - **Sector 1 (Blocks 4-6)**: Encrypted filament data
 - **Encryption**: AES-ECB with UID-derived keys
-- **S1 Key**: Derived from UID using key "q3bu^t1nqfZ(pf$1"
-- **Payload**: Decrypted with key "H@CFkRnz@KAtBJp2"
+- **S1 Key**: Derived from UID using key `q3bu^t1nqfZ(pf$1`
+- **Payload**: Decrypted with key `H@CFkRnz@KAtBJp2`
+
+#### Field Layout (38 bytes)
+
+```
+Date(5) + Supplier(4) + Batch(2) + Material(5) + Color(7) + Length(4) + Serial(6) + Reserve(4)
+```
+
+- Color format: `"0" + 6-char hex` (e.g., `"077BB41"`)
+- Batch defaults to `"A2"`, Reserve defaults to `"0000"`
 
 #### Authentication Algorithm
 
@@ -264,12 +232,12 @@ The Creality CFS system stores data in sectors 1-2 of MIFARE Classic tags:
 2. **Used tags**: Key A = derived from UID using AES algorithm
 3. **Fallback**: Multiple attempts with different methods
 
-## 🎨 Predefined Color Palette
+### Predefined Color Palette
 
-The web interface includes 35 predefined colors based on the Creality system:
+The interface includes 35 predefined colors based on the Creality system:
 
 | Category | Colors |
-|----------|--------|
+|---|---|
 | **Blues** | #25C4DA, #0099A7, #0B359A, #0A4AB6, #11B6EE, #90C6F5 |
 | **Oranges/Yellows** | #FA7C0C, #F7B30F, #E5C20F, #B18F2E, #F8E911, #F6D311 |
 | **Browns** | #8D766D, #6C4E43 |
@@ -279,55 +247,33 @@ The web interface includes 35 predefined colors based on the Creality system:
 | **Grays** | #474747, #668798, #B1BEC6, #58636E |
 | **Special** | #F2EFCE, #FFFFFF, #000000 |
 
-## 🚀 Releases and Versioning
+## Releases and Versioning
 
-- **v2.2.0+**: Web-only version with enhanced color picker
-- **v1.2.0+**: Complete web interface with color palette
-- **v1.1.1**: Critical fix in key derivation
-- **v1.1.0**: First version with native installers
-- **v1.0.x**: Basic CLI versions
+Version tagging is automatic via `.github/workflows/auto-tag.yml`:
 
-### 📦 Automatic Build and Tag System
+- **Auto-incrementing**: Patch version increases automatically on push to main
+- **Semantic Versioning**: Control version type using commit message flags:
+  - `git commit -m "Message #patch"` -- increment patch (v1.0.0 -> v1.0.1)
+  - `git commit -m "Message #minor"` -- increment minor (v1.0.0 -> v1.1.0)
+  - `git commit -m "Message #major"` -- increment major (v1.0.0 -> v2.0.0)
+- **Manual trigger**: Available through GitHub Actions interface
 
-#### 🏷️ Automatic Version Tagging
+Each `v*` tag automatically builds native binaries for macOS, Linux, and Windows via Wails.
 
-The project includes automatic version tagging when code is pushed to the main branch:
-
-- 🔄 **Auto-incrementing**: Patch version increases automatically
-- 🚀 **Semantic Versioning**: Control version type using commit message flags:
-  - `git commit -m "Mensagem #patch"` - increment patch (v1.0.0 → v1.0.1)
-  - `git commit -m "Mensagem #minor"` - increment minor (v1.0.0 → v1.1.0)
-  - `git commit -m "Mensagem #major"` - increment major (v1.0.0 → v2.0.0)
-- ⚙️ **Manual Triggering**: Available through GitHub Actions interface
-
-#### 🏗️ Automatic Build Pipeline
-
-Each `v*` tag automatically generates:
-- 🍎 DMG installer for macOS (with custom icon)
-- 🐧 Portable AppImage for Linux
-- 🪟 Windows executable with installer
-- 🐳 Multi-architecture Docker image
-
-## ❓ FAQ
-
-### How to use the web interface?
-
-- Open the application using `./cfs-spool-app` 
-- Access http://localhost:8080 in your browser
-- Use the intuitive interface for reading and writing tags
+## FAQ
 
 ### How to choose custom colors?
 
 You have full flexibility:
-- Choose one of the 35 predefined colors by clicking on the palette below the text field
+- Choose one of the 35 predefined colors by clicking on the palette
 - Type any hex code manually in the text field (6 digits)
-- Click on the colored square to the left of the text field to open a color picker and choose any color from the spectrum
+- Click the colored square to open a color picker and choose any color from the spectrum
 
 ### Optional fields don't work?
 
 The **Batch** and **Serial** fields are optional:
-- Empty batch → automatically `000`
-- Empty serial → automatically `000001`
+- Empty batch automatically becomes `000`
+- Empty serial automatically becomes `000001`
 - Automatic padding with leading zeros
 
 ### How to diagnose reading problems?
@@ -338,7 +284,7 @@ go run tests/test_read_diagnosis.go
 
 This command systematically tests all authentication methods.
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please:
 
@@ -348,25 +294,10 @@ Contributions are welcome! Please:
 4. Push to the branch (`git push origin feature/new-feature`)
 5. Open a Pull Request
 
-### 🔧 Local Development
+## License
 
-```bash
-# Run Web Application
-go run cmd/app/main.go
+This project is under the MIT license. See details in each source file.
 
-# Run Tests
-go run tests/test_read_diagnosis.go
-```
-
-## 📄 License
-
-This project is under MIT license. See details in each source file.
-
-## ⚠️ Disclaimer
+## Disclaimer
 
 This project is developed for educational and interoperability purposes. It is not affiliated with Creality 3D Technology Co., Ltd.
-
----
-
-**🏷️ CFS Spool v2.1.28** - Complete system for Creality RFID tags  
-*Developed with ❤️ in Go*
