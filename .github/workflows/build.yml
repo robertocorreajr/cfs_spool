@@ -35,7 +35,7 @@ jobs:
     - name: Install PC/SC dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y pcscd libpcsclite-dev libgtk-3-dev libwebkit2gtk-4.0-dev
+        sudo apt-get install -y pcscd libpcsclite-dev libgtk-3-dev libwebkit2gtk-4.1-dev
 
     - name: Install frontend dependencies
       run: cd frontend && npm ci
@@ -84,7 +84,7 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
-        sudo apt-get install -y pcscd libpcsclite-dev libgtk-3-dev libwebkit2gtk-4.0-dev
+        sudo apt-get install -y pcscd libpcsclite-dev libgtk-3-dev libwebkit2gtk-4.1-dev
 
     - name: Install frontend dependencies
       run: cd frontend && npm ci

@@ -40,7 +40,7 @@ install-wails:
 # Dependências do sistema (Ubuntu/Debian)
 install-deps-ubuntu:
 	sudo apt-get update
-	sudo apt-get install -y pcscd libpcsclite-dev libgtk-3-dev libwebkit2gtk-4.0-dev
+	sudo apt-get install -y pcscd libpcsclite-dev libgtk-3-dev libwebkit2gtk-4.1-dev
 
 # Dependências do sistema (macOS)
 install-deps-macos:
