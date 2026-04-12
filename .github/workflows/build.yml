@@ -127,7 +127,7 @@ jobs:
 
         # Codesign ad-hoc APÓS todas as modificações no .app bundle
         # Assinar de dentro para fora (binário primeiro, depois o bundle)
-        codesign -s - --force --options runtime "build/bin/CFS Spool.app/Contents/MacOS/CFS Spool"
+        codesign -s - --force --options runtime "build/bin/CFS Spool.app/Contents/MacOS/cfs-spool"
         codesign -s - --force --options runtime "build/bin/CFS Spool.app"
         # Verificar se a assinatura é válida
         codesign --verify --verbose "build/bin/CFS Spool.app"
