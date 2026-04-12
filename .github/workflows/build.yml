@@ -140,13 +140,17 @@ jobs:
       with:
         path: artifacts
 
+    - name: Fix binary permissions
+      run: |
+        # upload-artifact não preserva permissões Unix
+        chmod +x artifacts/cfs-spool-darwin-arm64/CFS\ Spool.app/Contents/MacOS/cfs-spool || true
+        chmod +x artifacts/cfs-spool-linux-amd64/cfs-spool || true
+
     - name: Organize release files
       run: |
         mkdir -p release-files
-        # Copy all build outputs, preserving directory names for clarity
         for dir in artifacts/cfs-spool-*/; do
           platform=$(basename "$dir")
-          # Zip each platform artifact
           cd "$dir"
           zip -r "../../release-files/${platform}.zip" .
           cd ../..
