@@ -21,6 +21,12 @@ bin/
 dist/
 releases/
 tmp/
+build/bin/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
 
 # Arquivos do sistema
 .DS_Store
@@ -49,3 +55,6 @@ tmp/
 *.icns
 *.iconset/
 iconset.iconset/
+
+# Claude local markdown files
+CLAUDE.local.md
