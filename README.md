@@ -39,7 +39,7 @@ Download the latest release for your platform:
 - **Compatible RFID reader** (tested with ACR122U)
 - **PC/SC headers**:
   - macOS: built-in (no action needed)
-  - Linux: `sudo apt install pcscd libpcsclite-dev libgtk-3-dev libwebkit2gtk-4.0-dev`
+  - Linux: `sudo apt install pcscd libpcsclite-dev libgtk-3-dev libwebkit2gtk-4.1-dev`
   - Windows: built-in (winscard)
 
 #### Build Commands

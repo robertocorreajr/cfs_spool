@@ -43,7 +43,7 @@ go run tests/test_decode_cfs.go        # CFS decoding from known raw bytes
 make install-wails         # go install wails CLI
 make install-frontend      # cd frontend && npm install
 make install-deps-macos    # brew install pcsc-lite
-make install-deps-ubuntu   # apt install pcscd libpcsclite-dev libgtk-3-dev libwebkit2gtk-4.0-dev
+make install-deps-ubuntu   # apt install pcscd libpcsclite-dev libgtk-3-dev libwebkit2gtk-4.1-dev
 ```
 
 ## Architecture
@@ -116,7 +116,7 @@ Wails Window (native)
 - **Wails CLI** (`go install github.com/wailsapp/wails/v2/cmd/wails@latest`)
 - C compiler (`gcc` on Linux/macOS)
 - PC/SC headers: `libpcsclite-dev` (Linux) or built-in (macOS)
-- Linux also needs: `libgtk-3-dev`, `libwebkit2gtk-4.0-dev`
+- Linux also needs: `libgtk-3-dev`, `libwebkit2gtk-4.1-dev`
 - RFID hardware: ACR122U reader + MIFARE Classic 1K/4K tags
 
 ## Release & Versioning
