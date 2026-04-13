@@ -12,7 +12,11 @@ import { toast } from "sonner";
 import { ReadTag, WriteTag, GetOptions } from "../../wailsjs/go/main/App";
 import type { OptionsResponse } from "@/types/spool";
 
-export function SpoolForm() {
+interface SpoolFormProps {
+  onUidChange?: (uid: string) => void;
+}
+
+export function SpoolForm({ onUidChange }: SpoolFormProps) {
   // Opcoes dos dropdowns
   const [options, setOptions] = useState<OptionsResponse>({ materials: [], vendors: [], lengths: [] });
 
@@ -41,6 +45,7 @@ export function SpoolForm() {
     try {
       const data = await ReadTag();
       setUid(data.uid);
+      onUidChange?.(data.uid);
       setDate(data.date);
       setSupplier(data.supplierCode);
       setMaterial(data.materialCode);
