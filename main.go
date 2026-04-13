@@ -19,10 +19,10 @@ func main() {
 
 	err := wails.Run(&options.App{
 		Title:  "CFS Spool",
-		Width:  1024,
-		Height: 768,
-		MinWidth: 800,
-		MinHeight: 600,
+		Width:  720,
+		Height: 680,
+		MinWidth: 480,
+		MinHeight: 500,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},

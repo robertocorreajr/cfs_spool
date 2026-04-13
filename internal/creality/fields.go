@@ -234,6 +234,7 @@ func (f Fields) FormatLength() string {
 // GetMaterialName retorna o nome do material baseado no código
 func (f Fields) GetMaterialName() string {
 	materials := map[string]string{
+		// Genéricos
 		"00001": "PLA",
 		"00002": "PLA-Silk",
 		"00003": "PETG",
@@ -244,35 +245,76 @@ func (f Fields) GetMaterialName() string {
 		"00008": "PA",
 		"00009": "PA-CF",
 		"00010": "BVOH",
+		"00011": "PVA",
 		"00012": "HIPS",
 		"00013": "PET-CF",
 		"00014": "PETG-CF",
 		"00015": "PA6-CF",
 		"00016": "PAHT-CF",
+		"00017": "PPS",
+		"00018": "PPS-CF",
+		"00019": "PP",
 		"00020": "PET",
 		"00021": "PC",
+		"00022": "PA612-CF",
+		"00023": "Support for PA",
+		"00024": "Support for PLA",
+		"00025": "PA12-CF",
+		"00026": "TPU 64D",
+		"00027": "PETG-GF",
+		"00031": "PP-CF",
+		"00032": "PCTG",
+		"00033": "ASA-CF",
+		"00034": "PA6-GF",
+		// Creality
 		"01001": "Hyper PLA",
+		"01002": "Hyper L-W PLA",
+		"01004": "Hyper Stardust",
+		"01601": "Soleyin Ultra PLA",
 		"02001": "Hyper PLA-CF",
 		"03001": "Hyper ABS",
 		"04001": "CR-PLA",
 		"05001": "CR-Silk",
 		"06001": "CR-PETG",
+		"06002": "Hyper PETG",
+		"06003": "Hyper PETG-CF",
+		"06004": "Hyper PETG-GF",
 		"07001": "CR-ABS",
+		"07002": "Hyper PC",
 		"08001": "Ender-PLA",
 		"09001": "EN-PLA+",
-		"09002": "ENDERFASTPLA",
+		"09002": "ENDER FAST PLA",
 		"10001": "HP-TPU",
-		"10100": "CR-PLA Especial", // Código antigo
 		"11001": "CR-Nylon",
-		"13001": "CR-PLACarbon",
-		"14001": "CR-PLAMatte",
-		"15001": "CR-PLAFluo",
+		"12002": "Hyper PPA-CF",
+		"12003": "Hyper PAHT-CF",
+		"12004": "Hyper PA612-CF",
+		"12005": "Hyper PA6-CF",
+		"13001": "CR-PLA Carbon",
+		"14001": "CR-PLA Matte",
+		"15001": "CR-PLA Fluo",
 		"16001": "CR-TPU",
 		"17001": "CR-Wood",
-		"18001": "HPUltraPLA",
+		"18001": "HP Ultra PLA",
 		"19001": "HP-ASA",
+		"29001": "Hyper Marble",
+		// eSUN
+		"00035": "eSUN PLA-LW",
+		"E1001": "eSUN PLA+",
+		"E1002": "eSUN PLA-Silk",
+		"E1003": "eSUN PLA-Matte",
+		"E1004": "eSUN PLA-Lite",
+		"E1005": "eSUN PLA-CF",
+		"E1006": "eSUN PLA-HS",
+		"E2001": "eSUN PETG",
+		"E2002": "eSUN PETG+HS",
+		// Polymaker
+		"P1001": "Panchroma PLA Satin",
+		"P1002": "PolySonic PLA Pro",
+		"P1003": "Panchroma PLA Matte",
+		"P1004": "PolySonic PLA",
 	}
-	
+
 	name := materials[f.Material]
 	if name == "" {
 		return f.Material + " (desconhecido)"
@@ -280,13 +322,15 @@ func (f Fields) GetMaterialName() string {
 	return name
 }
 
-// GetSupplierName retorna o nome do fornecedor baseado no código
+// GetSupplierName retorna o nome do fornecedor baseado no código RFID
+// Nota: no RFID o supplier é sempre 0276 (branded) ou 0000 (genérico).
+// A marca real (eSUN, Polymaker) é determinada pelo código do material.
 func (f Fields) GetSupplierName() string {
 	suppliers := map[string]string{
 		"0276": "Creality",
 		"0000": "Genérico",
 	}
-	
+
 	name := suppliers[f.Supplier]
 	if name == "" {
 		return f.Supplier + " (desconhecido)"
@@ -296,33 +340,36 @@ func (f Fields) GetSupplierName() string {
 
 // IsBlankTag verifica se a tag parece estar virgem ou com dados inválidos
 func (f Fields) IsBlankTag() bool {
-	// Verificar se os campos críticos têm valores válidos esperados
-	
 	// Batch deve ser "A2" em tags válidas
 	if f.Batch != "A2" {
 		return true
 	}
-	
-	// Supplier deve ter um código conhecido
+
+	// Supplier deve ter um código conhecido (no RFID é sempre 0276 ou 0000)
 	if !slices.Contains([]string{"0276", "0000"}, f.Supplier) {
 		return true
 	}
-	
-	// Material deve ter formato de código numérico
+
+	// Material deve ter 5 caracteres alfanuméricos (ex: 00001, E1001, P1001)
 	if len(f.Material) != 5 {
 		return true
 	}
-	
+	for _, c := range f.Material {
+		if !((c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
+			return true
+		}
+	}
+
 	// Reserve deve ser "0000" em tags válidas
 	if f.Reserve != "0000" {
 		return true
 	}
-	
+
 	// Color deve ter formato válido (7 chars, começando com 0)
 	if len(f.Color) != 7 || f.Color[0] != '0' {
 		return true
 	}
-	
+
 	return false
 }
 

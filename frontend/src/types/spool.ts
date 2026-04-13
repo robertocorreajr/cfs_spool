@@ -24,6 +24,7 @@ export interface WriteRequest {
 export interface MaterialOption {
   code: string;
   name: string;
+  vendor: string;
 }
 
 export interface VendorOption {
