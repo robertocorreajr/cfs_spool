@@ -126,6 +126,17 @@ Versioning is automatic via `.github/workflows/auto-tag.yml`:
 - Merging to `main` triggers auto-tag → triggers build workflow
 - Build workflow uses `wails build` for each platform
 
+## Pre-Push Validation
+
+Antes de qualquer `git push`, **sempre** executar:
+
+```bash
+go build ./...                          # Compilação Go
+cd frontend && npx tsc --noEmit         # Verificação TypeScript
+```
+
+Um hook `pre-push` está configurado em `.git/hooks/pre-push` e executa essas verificações automaticamente. Se falhar, o push é cancelado.
+
 ## Adding Materials/Vendors
 
 Material and vendor lists live in `app_options.go`. Edit the `materials`, `vendors`, or `lengths` slices to add new entries.
