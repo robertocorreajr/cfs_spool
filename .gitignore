@@ -58,3 +58,7 @@ iconset.iconset/
 
 # Claude local markdown files
 CLAUDE.local.md
+
+# Superpowers e docs locais
+.superpowers/
+docs/
