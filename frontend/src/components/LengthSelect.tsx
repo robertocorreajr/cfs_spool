@@ -15,8 +15,8 @@ export function LengthSelect({
   length, customGrams, onLengthChange, onCustomGramsChange, lengths,
 }: LengthSelectProps) {
   return (
-    <div className="space-y-2">
-      <Label>Comprimento</Label>
+    <div className="space-y-1.5">
+      <Label className="text-xs font-medium text-muted-foreground">Comprimento</Label>
       <Select value={length} onValueChange={onLengthChange}>
         <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
         <SelectContent>
