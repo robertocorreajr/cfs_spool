@@ -119,9 +119,9 @@ jobs:
             git add README.md
           fi
           
-          if grep -q "🏷️ CFS Spool v" README.pt-BR.md 2>/dev/null; then
-            sed -i -E "s/\*\*🏷️ CFS Spool v[0-9]+\.[0-9]+\.[0-9]+[^\*]*\*\*/\*\*🏷️ CFS Spool ${{ steps.new_version.outputs.version }}\*\*/" README.pt-BR.md
-            git add README.pt-BR.md
+          if grep -q "🏷️ CFS Spool v" README.en.md 2>/dev/null; then
+            sed -i -E "s/\*\*🏷️ CFS Spool v[0-9]+\.[0-9]+\.[0-9]+[^\*]*\*\*/\*\*🏷️ CFS Spool ${{ steps.new_version.outputs.version }}\*\*/" README.en.md
+            git add README.en.md
           fi
       
       - name: Criar commit para atualização de versão

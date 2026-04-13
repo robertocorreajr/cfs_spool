@@ -74,10 +74,10 @@ if grep -q "🏷️ CFS Spool v" README.md; then
     git add README.md
 fi
 
-if grep -q "🏷️ CFS Spool v" README.pt-BR.md; then
-    sed -i.bak -E "s/\*\*🏷️ CFS Spool v[0-9]+\.[0-9]+\.[0-9]+[^\*]*\*\*/\*\*🏷️ CFS Spool ${NEW_VERSION}\*\*/" README.pt-BR.md
-    rm README.pt-BR.md.bak 2>/dev/null || true
-    git add README.pt-BR.md
+if grep -q "🏷️ CFS Spool v" README.en.md; then
+    sed -i.bak -E "s/\*\*🏷️ CFS Spool v[0-9]+\.[0-9]+\.[0-9]+[^\*]*\*\*/\*\*🏷️ CFS Spool ${NEW_VERSION}\*\*/" README.en.md
+    rm README.en.md.bak 2>/dev/null || true
+    git add README.en.md
 fi
 
 # Create and push tag
