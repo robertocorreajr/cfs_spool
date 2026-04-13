@@ -1,170 +1,212 @@
-# CFS Spool - Creality Filament Spool RFID Manager
+# CFS Spool - Gerenciador RFID de Filamentos Creality
 
-Native desktop application (Wails v2 + React + shadcn/ui) for reading and writing Creality File System (CFS) RFID tags used in Creality 3D printer filament spools.
+Aplicativo desktop nativo (Wails v2 + React + shadcn/ui) para leitura e gravação de tags RFID do Creality File System (CFS) utilizadas em bobinas de filamento para impressoras 3D Creality.
 
-[![English](https://img.shields.io/badge/lang-en-blue.svg)](README.md)
-[![Portuguese](https://img.shields.io/badge/lang-pt--BR-green.svg)](README.pt-BR.md)
+[![Português](https://img.shields.io/badge/lang-pt--BR-green.svg)](README.md)
+[![English](https://img.shields.io/badge/lang-en-blue.svg)](README.en.md)
 
-## Features
+## Funcionalidades
 
-- **Native desktop app** -- no browser or server needed, runs directly on your OS
-- **Enhanced color selector**: 35 predefined colors based on the Creality system + color picker for any custom hex color
-- **Smart logic**: Auto-selection of supplier based on chosen material
-- **Auto-fill**: Optional fields (Batch, Serial) with automatic padding
-- **Visual reading**: Preview colors from existing tags
-- **AES-ECB encryption/decryption**: Full support for Creality encryption system
-- **Robust authentication**: Multiple fallback methods for RFID reading
-- **Key derivation**: Complete algorithm based on tag UID
-- **Compatibility**: Works with new tags (FFFFFFFFFFFF) and used tags (derived key)
+- **Aplicativo desktop nativo** -- sem necessidade de navegador ou servidor, executa diretamente no seu sistema operacional
+- **Seletor avançado de cores**: 35 cores predefinidas baseadas no sistema Creality + seletor de cores para qualquer cor hexadecimal personalizada
+- **Lógica inteligente**: Auto-seleção de fornecedor baseado no material escolhido
+- **Preenchimento automático**: Campos opcionais (Lote, Serial) com padding automático
+- **Leitura visual**: Preview das cores lidas das tags existentes
+- **Criptografia/descriptografia AES-ECB**: Suporte completo ao sistema de criptografia Creality
+- **Autenticação robusta**: Múltiplos métodos de fallback para leitura RFID
+- **Derivação de chaves**: Algoritmo completo baseado no UID da tag
+- **Compatibilidade**: Funciona com tags novas (FFFFFFFFFFFF) e usadas (chave derivada)
 
-## Installation
+## Capturas de Tela
 
-### Ready Downloads (Recommended)
+### Aplicativo
 
-Download the latest release for your platform:
+| | |
+|:---:|:---:|
+| ![Tela principal](docs/screenshots/app-main-screen.png) | ![Seletor de cores](docs/screenshots/app-color-picker.png) |
+| *Tela principal* | *Seletor de cores* |
+
+## Instalação
+
+### Downloads Prontos (Recomendado)
+
+Baixe a versão mais recente para sua plataforma:
 
 **[Releases - GitHub](https://github.com/robertocorreajr/cfs_spool/releases/latest)**
 
-- **macOS (Apple Silicon)**: `cfs-spool-darwin-arm64` -- native app, just run it
-- **Linux (x86_64)**: `cfs-spool-linux-amd64` -- native app, just run it
-- **Windows (x86_64)**: `cfs-spool-windows-amd64.exe` -- native app, just run it
+| Plataforma | Arquivo | Formato |
+|:---:|:---:|:---:|
+| macOS (Apple Silicon) | `cfs-spool-darwin-arm64.dmg` | DMG (arraste para Applications) |
+| Linux (x86_64) | `cfs-spool-linux-amd64.zip` | ZIP (extraia e execute) |
+| Windows (x86_64) | `cfs-spool-windows-amd64.zip` | ZIP (extraia e execute) |
 
-### Build from Source
+### macOS: Permitir execução (Gatekeeper)
 
-#### Prerequisites
+O aplicativo não é assinado com certificado Apple Developer, então o macOS bloqueia a primeira execução. Use um dos métodos abaixo para liberar:
+
+#### Método 1: Ajustes do Sistema (recomendado)
+
+1. Abra o DMG e arraste o **CFS Spool** para a pasta **Applications**
+2. Tente abrir o app normalmente (duplo clique) — ele será bloqueado
+3. **Importante**: No diálogo de bloqueio, clique em **"OK"**. **Não clique em "Mover para o Lixo"**, pois isso apagará o app e você precisará arrastar novamente do DMG
+4. Abra **Ajustes do Sistema** → **Privacidade e Segurança**
+5. Na seção "Segurança", você verá a mensagem sobre o CFS Spool
+6. Clique em **"Abrir Mesmo Assim"**
+7. Confirme na próxima janela
+
+![Bloqueio do Gatekeeper](docs/screenshots/macos-gatekeeper-blocked.png)
+![Privacidade e Segurança](docs/screenshots/macos-privacy-security.png)
+
+#### Método 2: Terminal
+
+Execute o comando abaixo no Terminal para remover a quarentena:
+
+```bash
+xattr -cr /Applications/CFS\ Spool.app
+```
+
+Depois, abra o app normalmente pelo Launchpad ou pasta Applications.
+
+### Compilação a partir do Código Fonte
+
+#### Pré-requisitos
 
 - **Go 1.24+**
 - **Node.js 18+**
 - **Wails CLI**: `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
-- **Compatible RFID reader** (tested with ACR122U)
-- **PC/SC headers**:
-  - macOS: built-in (no action needed)
+- **Leitor RFID compatível** (testado com ACR122U)
+- **Headers PC/SC**:
+  - macOS: incluso no sistema (nenhuma ação necessária)
   - Linux: `sudo apt install pcscd libpcsclite-dev libgtk-3-dev libwebkit2gtk-4.1-dev`
-  - Windows: built-in (winscard)
+  - Windows: incluso no sistema (winscard)
 
-#### Build Commands
+#### Comandos de Build
 
 ```bash
 git clone https://github.com/robertocorreajr/cfs_spool.git
 cd cfs_spool
 
-# Development mode (hot-reload)
+# Modo de desenvolvimento (hot-reload)
 wails dev
 
-# Production build
+# Build de produção
 wails build
 
-# Cross-compile all platforms
+# Compilar para todas as plataformas
 make build-all
 ```
 
-The production binary is output to `build/bin/`.
+O binário de produção é gerado em `build/bin/`.
 
-## Usage
+## Uso
 
-1. Connect your ACR122U RFID reader
-2. Launch the application (double-click or run from terminal)
-3. **Read Tag**: Place a tag on the reader and click "Read Tag"
-4. **Write Tag**: Fill in the fields and click "Write Tag"
+1. Conecte seu leitor RFID ACR122U
+2. Inicie o aplicativo (duplo clique ou execute pelo terminal)
+3. **Ler Tag**: Coloque a tag no leitor e clique em "Ler Tag"
+4. **Gravar Tag**: Preencha os campos e clique em "Gravar Tag"
 
-### Color Selection
+### Seleção de Cores
 
-You have full flexibility for choosing colors:
-- Click one of the **35 predefined colors** from the palette
-- Type any **6-digit hex code** manually in the text field
-- Click the **color picker** square to open a full color spectrum selector
+Você tem total flexibilidade para escolher cores:
+- Clique em uma das **35 cores predefinidas** da paleta
+- Digite qualquer **código hexadecimal de 6 dígitos** manualmente no campo de texto
+- Clique no **quadrado do seletor de cores** para abrir o espectro completo de cores
 
-### Smart Auto-fill
+### Preenchimento Automático Inteligente
 
-- Empty batch automatically becomes `000`
-- Empty serial automatically becomes `000001`
-- Automatic padding with leading zeros
+- Lote vazio automaticamente vira `000`
+- Serial vazio automaticamente vira `000001`
+- Padding automático com zeros à esquerda
 
-### Smart Logic
+### Lógica Inteligente
 
-- Generic material selects Generic supplier automatically
-- Creality material selects 0276 supplier (Creality) automatically
-- Material list is filtered by selected supplier
+- Material Generic seleciona fornecedor Generic automaticamente
+- Material Creality seleciona fornecedor 0276 (Creality) automaticamente
+- Lista de materiais é filtrada pelo fornecedor selecionado
 
-## Supported Hardware
+## Hardware Suportado
 
-### Recommended Hardware (Affiliate Links)
+### Hardware Recomendado (Links de Afiliados)
 
-- **[ACR122U RFID Reader](https://s.click.aliexpress.com/e/_ok8qAl9)** -- Reader used in development (compatibility guaranteed)
-- **[MIFARE Classic 1K Tags](https://s.click.aliexpress.com/e/_oBPVnEb)** -- Compatible tags tested in the project
+#### AliExpress (Internacional)
+- **[Leitor RFID ACR122U](https://s.click.aliexpress.com/e/_ok8qAl9)** -- Leitor usado no desenvolvimento (compatibilidade garantida)
+- **[Etiquetas MIFARE Classic 1K](https://s.click.aliexpress.com/e/_oBPVnEb)** -- Tags compatíveis testadas no projeto
 
-### Tested RFID Readers
-- **ACR122U** (recommended)
-- **Other PC/SC readers** (compatibility not guaranteed)
+#### Mercado Livre (Brasil)
+- **[Leitor e Gravador RFID](https://meli.la/13HiRy2)** -- Opção nacional para compra do leitor RFID
 
-### Supported Tags
+### Leitores RFID Testados
+- **ACR122U** (recomendado)
+- **Outros leitores PC/SC** (compatibilidade não garantida)
+
+### Tags Suportadas
 - **MIFARE Classic 1K**
 - **MIFARE Classic 4K**
-- **Creality CFS Tags**
+- **Tags Creality CFS**
 
-## Development
+## Desenvolvimento
 
-### Project Structure
+### Estrutura do Projeto
 
 ```
 cfs_spool/
-├── main.go                 # Wails app entry point
-├── app.go                  # App struct with Wails-bound methods
-├── app_options.go          # Options handler (materials, vendors)
-├── wails.json              # Wails configuration
-├── frontend/               # React + shadcn/ui frontend
-│   ├── src/                # React components and pages
-│   ├── package.json        # Node.js dependencies
-│   ├── tailwind.config.js  # Tailwind CSS config
-│   └── vite.config.ts      # Vite bundler config
+├── main.go                 # Ponto de entrada do app Wails
+├── app.go                  # Struct App com métodos vinculados ao Wails
+├── app_options.go          # Handler de opções (materiais, fornecedores)
+├── wails.json              # Configuração do Wails
+├── frontend/               # Frontend React + shadcn/ui
+│   ├── src/                # Componentes e páginas React
+│   ├── package.json        # Dependências Node.js
+│   ├── tailwind.config.js  # Configuração Tailwind CSS
+│   └── vite.config.ts      # Configuração do bundler Vite
 ├── internal/
-│   ├── creality/           # Creality-specific logic
-│   │   ├── crypto.go       # AES-ECB cryptography
-│   │   └── fields.go       # Field parsing and formatting
-│   └── rfid/               # RFID communication
-│       └── reader.go       # PC/SC interface
-├── build/                  # Wails build output and assets
-├── tests/                  # Diagnostic tools
-├── assets/                 # Visual resources
-├── .github/workflows/      # CI/CD pipelines
-├── Makefile                # Build shortcuts
-└── go.mod                  # Go module definition
+│   ├── creality/           # Lógica específica da Creality
+│   │   ├── crypto.go       # Criptografia AES-ECB
+│   │   └── fields.go       # Parsing e formatação de campos
+│   └── rfid/               # Comunicação RFID
+│       └── reader.go       # Interface PC/SC
+├── build/                  # Saída de build e assets do Wails
+├── tests/                  # Ferramentas de diagnóstico
+├── assets/                 # Recursos visuais
+├── .github/workflows/      # Pipelines CI/CD
+├── Makefile                # Atalhos de build
+└── go.mod                  # Definição do módulo Go
 ```
 
-### Local Development
+### Desenvolvimento Local
 
 ```bash
-# Run in dev mode with hot-reload
+# Executar em modo de desenvolvimento com hot-reload
 wails dev
 
-# Run Go tests
+# Executar testes Go
 go test -v ./internal/... ./...
 
-# RFID diagnostic tools (require hardware)
+# Ferramentas de diagnóstico RFID (requerem hardware)
 go run tests/test_read_diagnosis.go
 go run tests/test_auth_read.go
 go run tests/test_decode_cfs.go
 ```
 
-### Dependencies
+### Dependências
 
-- `github.com/wailsapp/wails/v2` -- Desktop application framework
-- `github.com/ebfe/scard` -- PC/SC interface for RFID communication
-- `crypto/aes` -- AES cryptography (Go standard library)
+- `github.com/wailsapp/wails/v2` -- Framework de aplicativo desktop
+- `github.com/ebfe/scard` -- Interface PC/SC para comunicação RFID
+- `crypto/aes` -- Criptografia AES (biblioteca padrão do Go)
 - React + shadcn/ui + Tailwind CSS (frontend)
 
-## Technical Reference
+## Referência Técnica
 
-### Known Vendors
+### Vendors Conhecidos
 
-| **Vendor Code** | **Brand / Notes** |
+| **Vendor Code** | **Marca / Observação** |
 |:---:|:---:|
-| 0x0276 | Creality, Hyper, Ender, HP (official lines) |
-| 0xFFFF | Generic (any non-official manufacturer) |
+| 0x0276 | Creality, Hyper, Ender, HP (linhas oficiais) |
+| 0xFFFF | Genérico (qualquer fabricante não-oficial) |
 
-### Known Materials
+### Materials Conhecidos
 
-| **Material Code** | **Description** |
+| **Material Code** | **Descrição** |
 |:---:|:---:|
 | 00001 | Generic PLA |
 | 00002 | Generic PLA-Silk |
@@ -208,96 +250,96 @@ go run tests/test_decode_cfs.go
 | 18001 | HP Ultra PLA |
 | 19001 | HP-ASA |
 
-### CFS Tag Format
+### Formato da Tag CFS
 
-The Creality CFS system stores data in sectors 1-2 of MIFARE Classic tags:
+O sistema Creality CFS armazena dados nos setores 1-2 das tags MIFARE Classic:
 
-- **Sector 1 (Blocks 4-6)**: Encrypted filament data
-- **Encryption**: AES-ECB with UID-derived keys
-- **S1 Key**: Derived from UID using key `q3bu^t1nqfZ(pf$1`
-- **Payload**: Decrypted with key `H@CFkRnz@KAtBJp2`
+- **Setor 1 (Blocos 4-6)**: Dados criptografados do filamento
+- **Criptografia**: AES-ECB com chaves derivadas do UID
+- **Chave S1**: Derivada do UID usando chave `q3bu^t1nqfZ(pf$1`
+- **Payload**: Descriptografado com chave `H@CFkRnz@KAtBJp2`
 
-#### Field Layout (38 bytes)
+#### Layout dos Campos (38 bytes)
 
 ```
 Date(5) + Supplier(4) + Batch(2) + Material(5) + Color(7) + Length(4) + Serial(6) + Reserve(4)
 ```
 
-- Color format: `"0" + 6-char hex` (e.g., `"077BB41"`)
-- Batch defaults to `"A2"`, Reserve defaults to `"0000"`
+- Formato da cor: `"0" + 6 caracteres hex` (ex: `"077BB41"`)
+- Batch padrão: `"A2"`, Reserve padrão: `"0000"`
 
-#### Authentication Algorithm
+#### Algoritmo de Autenticação
 
-1. **New tags**: Key A = `FFFFFFFFFFFF` (MIFARE default)
-2. **Used tags**: Key A = derived from UID using AES algorithm
-3. **Fallback**: Multiple attempts with different methods
+1. **Tags novas**: Key A = `FFFFFFFFFFFF` (padrão MIFARE)
+2. **Tags usadas**: Key A = derivada do UID usando algoritmo AES
+3. **Fallback**: Múltiplas tentativas com diferentes métodos
 
-### Predefined Color Palette
+### Paleta de Cores Predefinidas
 
-The interface includes 35 predefined colors based on the Creality system:
+A interface inclui 35 cores predefinidas baseadas no sistema Creality:
 
-| Category | Colors |
+| Categoria | Cores |
 |---|---|
-| **Blues** | #25C4DA, #0099A7, #0B359A, #0A4AB6, #11B6EE, #90C6F5 |
-| **Oranges/Yellows** | #FA7C0C, #F7B30F, #E5C20F, #B18F2E, #F8E911, #F6D311 |
-| **Browns** | #8D766D, #6C4E43 |
-| **Reds/Pinks** | #E62E2E, #EE2862, #EA2A2B, #E83D89, #AE2E65 |
-| **Purples** | #611C8B, #8D60C7, #B287C9 |
-| **Greens** | #006764, #018D80, #42B5AE, #1D822D, #54B351, #72E115 |
-| **Grays** | #474747, #668798, #B1BEC6, #58636E |
-| **Special** | #F2EFCE, #FFFFFF, #000000 |
+| **Azuis** | #25C4DA, #0099A7, #0B359A, #0A4AB6, #11B6EE, #90C6F5 |
+| **Laranjas/Amarelos** | #FA7C0C, #F7B30F, #E5C20F, #B18F2E, #F8E911, #F6D311 |
+| **Marrons** | #8D766D, #6C4E43 |
+| **Vermelhos/Rosas** | #E62E2E, #EE2862, #EA2A2B, #E83D89, #AE2E65 |
+| **Roxos** | #611C8B, #8D60C7, #B287C9 |
+| **Verdes** | #006764, #018D80, #42B5AE, #1D822D, #54B351, #72E115 |
+| **Cinzas** | #474747, #668798, #B1BEC6, #58636E |
+| **Especiais** | #F2EFCE, #FFFFFF, #000000 |
 
-## Releases and Versioning
+## Releases e Versionamento
 
-Version tagging is automatic via `.github/workflows/auto-tag.yml`:
+O tagueamento de versões é automático via `.github/workflows/auto-tag.yml`:
 
-- **Auto-incrementing**: Patch version increases automatically on push to main
-- **Semantic Versioning**: Control version type using commit message flags:
-  - `git commit -m "Message #patch"` -- increment patch (v1.0.0 -> v1.0.1)
-  - `git commit -m "Message #minor"` -- increment minor (v1.0.0 -> v1.1.0)
-  - `git commit -m "Message #major"` -- increment major (v1.0.0 -> v2.0.0)
-- **Manual trigger**: Available through GitHub Actions interface
+- **Auto-incremento**: Versão patch aumenta automaticamente no push para main
+- **Versionamento Semântico**: Controle o tipo de versão usando flags na mensagem de commit:
+  - `git commit -m "Mensagem #patch"` -- incrementa patch (v1.0.0 -> v1.0.1)
+  - `git commit -m "Mensagem #minor"` -- incrementa minor (v1.0.0 -> v1.1.0)
+  - `git commit -m "Mensagem #major"` -- incrementa major (v1.0.0 -> v2.0.0)
+- **Acionamento manual**: Disponível pela interface do GitHub Actions
 
-Each `v*` tag automatically builds native binaries for macOS, Linux, and Windows via Wails.
+Cada tag `v*` automaticamente compila binários nativos para macOS, Linux e Windows via Wails.
 
 ## FAQ
 
-### How to choose custom colors?
+### Como escolher cores personalizadas?
 
-You have full flexibility:
-- Choose one of the 35 predefined colors by clicking on the palette
-- Type any hex code manually in the text field (6 digits)
-- Click the colored square to open a color picker and choose any color from the spectrum
+Você tem total flexibilidade:
+- Escolha uma das 35 cores predefinidas clicando na paleta
+- Digite qualquer código hexadecimal manualmente no campo de texto (6 dígitos)
+- Clique no quadrado colorido para abrir o seletor de cores e escolher qualquer cor do espectro
 
-### Optional fields don't work?
+### Campos opcionais não funcionam?
 
-The **Batch** and **Serial** fields are optional:
-- Empty batch automatically becomes `000`
-- Empty serial automatically becomes `000001`
-- Automatic padding with leading zeros
+Os campos **Lote** e **Serial** são opcionais:
+- Lote vazio automaticamente vira `000`
+- Serial vazio automaticamente vira `000001`
+- Preenchimento com zeros à esquerda automático
 
-### How to diagnose reading problems?
+### Como diagnosticar problemas de leitura?
 
 ```bash
 go run tests/test_read_diagnosis.go
 ```
 
-This command systematically tests all authentication methods.
+Este comando testa sistematicamente todos os métodos de autenticação.
 
-## Contributing
+## Contribuição
 
-Contributions are welcome! Please:
+Contribuições são bem-vindas! Por favor:
 
-1. Fork the project
-2. Create a branch for your feature (`git checkout -b feature/new-feature`)
-3. Commit your changes (`git commit -am 'Add new feature'`)
-4. Push to the branch (`git push origin feature/new-feature`)
-5. Open a Pull Request
+1. Faça um fork do projeto
+2. Crie uma branch para sua feature (`git checkout -b feature/nova-funcionalidade`)
+3. Commit suas mudanças (`git commit -am 'Adiciona nova funcionalidade'`)
+4. Push para a branch (`git push origin feature/nova-funcionalidade`)
+5. Abra um Pull Request
 
-## License
+## Licença
 
-This project is under the MIT license. See details in each source file.
+Este projeto está sob licença MIT. Veja os detalhes em cada arquivo fonte.
 
 ## Disclaimer
 
-This project is developed for educational and interoperability purposes. It is not affiliated with Creality 3D Technology Co., Ltd.
+Este projeto é desenvolvido para fins educacionais e de interoperabilidade. Não é afiliado à Creality 3D Technology Co., Ltd.

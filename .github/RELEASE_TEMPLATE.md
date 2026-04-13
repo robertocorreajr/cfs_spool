@@ -39,14 +39,23 @@ Choose the appropriate package for your system:
 3. Connect your ACR122U RFID reader
 4. Launch the application
 
-#### macOS: Security Warning
+#### macOS: Aviso de Seguranca / Security Warning
 
-The app is not signed with an Apple Developer certificate, so macOS may block it.
-Run in Terminal to allow:
+O app nao e assinado com certificado Apple Developer. O macOS bloqueia a primeira execucao.
+The app is not signed with an Apple Developer certificate. macOS will block first launch.
+
+**Metodo 1 / Method 1 — Ajustes do Sistema / System Settings (recomendado / recommended):**
+1. Tente abrir normalmente / Try opening normally
+2. Ajustes do Sistema → Privacidade e Seguranca → "Abrir Mesmo Assim"
+3. System Settings → Privacy & Security → "Open Anyway"
+
+**Metodo 2 / Method 2 — Terminal:**
 ```
 xattr -cr /Applications/CFS\ Spool.app
 ```
-Or right-click the app > "Open" to authorize manually.
+
+Para mais detalhes, veja o [README](https://github.com/robertocorreajr/cfs_spool#macos-permitir-execucao-gatekeeper).
+For detailed instructions, see the [README](https://github.com/robertocorreajr/cfs_spool#macos-permitir-execucao-gatekeeper).
 
 ### Troubleshooting
 
