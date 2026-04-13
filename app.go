@@ -18,6 +18,7 @@ type App struct {
 	ctx       context.Context
 	stopWatch chan struct{}
 	lastUID   string
+	failCount int // falhas consecutivas antes de considerar tag removida
 }
 
 // NewApp cria uma nova instância da aplicação
@@ -46,14 +47,18 @@ func (a *App) StopTagWatcher() {
 		close(a.stopWatch)
 		a.stopWatch = nil
 		a.lastUID = ""
+		a.failCount = 0
 	}
 }
 
 func (a *App) tagWatchLoop() {
-	ticker := time.NewTicker(1500 * time.Millisecond)
+	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 
-	wailsRuntime.EventsEmit(a.ctx, "tag:status", "waiting")
+	// Só emitir "waiting" se não há tag conhecida (evita flicker após escrita)
+	if a.lastUID == "" {
+		wailsRuntime.EventsEmit(a.ctx, "tag:status", "waiting")
+	}
 
 	for {
 		select {
@@ -65,16 +70,24 @@ func (a *App) tagWatchLoop() {
 	}
 }
 
+const maxFailsBeforeRemoved = 3 // falhas consecutivas para considerar tag removida
+
 func (a *App) tryReadTag() {
 	data, err := a.ReadTag()
 	if err != nil {
-		if a.lastUID != "" {
+		a.failCount++
+		// Só considera tag removida após N falhas consecutivas
+		if a.lastUID != "" && a.failCount >= maxFailsBeforeRemoved {
 			a.lastUID = ""
+			a.failCount = 0
 			wailsRuntime.EventsEmit(a.ctx, "tag:status", "waiting")
 		}
 		return
 	}
 
+	a.failCount = 0
+
+	// Mesma tag: não re-emitir eventos
 	if data.UID == a.lastUID {
 		return
 	}
@@ -104,6 +117,7 @@ type TagData struct {
 	LengthCode   string `json:"lengthCode"`    // "0330"
 	LengthDisplay string `json:"lengthDisplay"` // "330cm (1kg)"
 	Serial       string `json:"serial"`        // "000001"
+	IsBlank      bool   `json:"isBlank"`       // true se tag virgem
 }
 
 // WriteRequest dados enviados pelo frontend para gravação
@@ -161,9 +175,22 @@ func (a *App) ReadTag() (*TagData, error) {
 		return nil, fmt.Errorf("Erro ao parsear dados: %v", err)
 	}
 
-	// Verificar tag virgem
+	// Tag virgem: retornar dados padrão com o UID
 	if fields.IsBlankTag() {
-		return nil, fmt.Errorf("Tag virgem detectada. Esta tag não contém dados válidos ou nunca foi gravada.")
+		today := time.Now().Format("2006-01-02")
+		return &TagData{
+			UID:          uid,
+			Date:         today,
+			SupplierCode: "0276",
+			SupplierName: "Creality",
+			MaterialCode: "",
+			MaterialName: "",
+			Color:        "000000",
+			LengthCode:   "0330",
+			LengthDisplay: "330cm (1kg)",
+			Serial:       "000001",
+			IsBlank:      true,
+		}, nil
 	}
 
 	// Extrair cor sem prefixo "0"
@@ -192,6 +219,9 @@ func (a *App) ReadTag() (*TagData, error) {
 
 // WriteTag grava dados em uma tag RFID
 func (a *App) WriteTag(req WriteRequest) error {
+	// Parar o watcher durante a escrita para evitar interferência PC/SC
+	a.StopTagWatcher()
+
 	// Validar cor
 	validatedColor, err := a.ValidateColor(req.Color)
 	if err != nil {
@@ -252,8 +282,15 @@ func (a *App) WriteTag(req WriteRequest) error {
 	blocksToWrite := []string{b4, b5, b6}
 	err = reader.WriteTagCFS(uid, blocksToWrite, false)
 	if err != nil {
+		a.StartTagWatcher()
 		return fmt.Errorf("Erro na escrita: %v", err)
 	}
+
+	// Aguardar tag estabilizar após escrita
+	time.Sleep(1 * time.Second)
+
+	// Reiniciar leitura — lastUID vazio força releitura com dados atualizados
+	a.StartTagWatcher()
 
 	return nil
 }
@@ -321,7 +358,11 @@ func vendorName(vendorCode string) string {
 
 // convertDate converte data de YYYY-MM-DD para formato interno YYMDD (5 chars)
 // Formato: YY (2 dígitos) + M (1 char: 1-9 para Jan-Set, A=Out, B=Nov, C=Dez) + DD (2 dígitos)
+// Se a data estiver vazia, usa a data atual
 func convertDate(dateStr string) (string, error) {
+	if strings.TrimSpace(dateStr) == "" {
+		dateStr = time.Now().Format("2006-01-02")
+	}
 	t, err := time.Parse("2006-01-02", dateStr)
 	if err != nil {
 		return "", err

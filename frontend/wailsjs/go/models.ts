@@ -19,6 +19,7 @@ export namespace main {
 	export class MaterialOption {
 	    code: string;
 	    name: string;
+	    vendor: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new MaterialOption(source);
@@ -28,6 +29,7 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.code = source["code"];
 	        this.name = source["name"];
+	        this.vendor = source["vendor"];
 	    }
 	}
 	export class VendorOption {
@@ -90,6 +92,7 @@ export namespace main {
 	    lengthCode: string;
 	    lengthDisplay: string;
 	    serial: string;
+	    isBlank: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new TagData(source);
@@ -108,6 +111,7 @@ export namespace main {
 	        this.lengthCode = source["lengthCode"];
 	        this.lengthDisplay = source["lengthDisplay"];
 	        this.serial = source["serial"];
+	        this.isBlank = source["isBlank"];
 	    }
 	}
 	

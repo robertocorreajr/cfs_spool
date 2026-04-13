@@ -8,6 +8,10 @@ export function GetVersion():Promise<string>;
 
 export function ReadTag():Promise<main.TagData>;
 
+export function StartTagWatcher():Promise<void>;
+
+export function StopTagWatcher():Promise<void>;
+
 export function ValidateColor(arg1:string):Promise<string>;
 
 export function WriteTag(arg1:main.WriteRequest):Promise<void>;

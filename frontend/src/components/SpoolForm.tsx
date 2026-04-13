@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { ColorPicker } from "@/components/ColorPicker";
 import { MaterialSelect } from "@/components/MaterialSelect";
 import { LengthSelect } from "@/components/LengthSelect";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { WriteTag, GetOptions, GetVersion } from "../../wailsjs/go/main/App";
 import { EventsOn } from "../../wailsjs/runtime/runtime";
@@ -35,10 +34,6 @@ export function SpoolForm() {
   const [isWriting, setIsWriting] = useState(false);
   const [writeCount, setWriteCount] = useState(0);
 
-  // Dialog de sobrescrita
-  const [showOverwriteDialog, setShowOverwriteDialog] = useState(false);
-  const pendingTagData = useRef<any>(null);
-
   useEffect(() => {
     GetOptions().then(setOptions).catch(() => toast.error("Erro ao carregar opcoes"));
     GetVersion().then(setVersion);
@@ -51,47 +46,25 @@ export function SpoolForm() {
     });
     const offRead = EventsOn("tag:read", (data: any) => {
       setTagStatus("read");
-      // Verifica se o formulario tem dados diferentes da tag lida
-      const hasChanges = material && (
-        data.materialCode !== material ||
-        data.supplierCode !== supplier ||
-        data.color !== color
-      );
-      if (hasChanges) {
-        pendingTagData.current = data;
-        setShowOverwriteDialog(true);
-      } else {
-        applyTagData(data);
-      }
+      applyTagData(data);
     });
     return () => { offStatus(); offRead(); };
-  }, [material, supplier, color]);
+  }, []);
 
   const applyTagData = (data: any) => {
     setUid(data.uid);
-    setDate(data.date);
-    setSupplier(data.supplierCode);
-    setMaterial(data.materialCode);
-    setColor(data.color);
-    setLength(data.lengthCode);
-    setSerial(data.serial);
-    toast.success(`Tag lida — UID: ${data.uid}`);
-  };
-
-  const handleOverwriteConfirm = () => {
-    if (pendingTagData.current) {
-      applyTagData(pendingTagData.current);
-      pendingTagData.current = null;
+    setDate(data.date || new Date().toISOString().split("T")[0]);
+    setSupplier(data.supplierCode || "0276");
+    setMaterial(data.materialCode || "");
+    setColor(data.color || "000000");
+    setLength(data.lengthCode || "0330");
+    setSerial(data.serial || "000001");
+    setWriteCount(0);
+    if (data.isBlank) {
+      toast.info(`Tag virgem — UID: ${data.uid}`);
+    } else {
+      toast.success(`Tag lida — UID: ${data.uid}`);
     }
-    setShowOverwriteDialog(false);
-  };
-
-  const handleOverwriteCancel = () => {
-    if (pendingTagData.current) {
-      setUid(pendingTagData.current.uid);
-      pendingTagData.current = null;
-    }
-    setShowOverwriteDialog(false);
   };
 
   const handleSerialChange = (value: string) => {
@@ -207,21 +180,6 @@ export function SpoolForm() {
         </div>
       </div>
 
-      {/* Dialog de confirmacao de sobrescrita */}
-      <Dialog open={showOverwriteDialog} onOpenChange={setShowOverwriteDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Dados diferentes detectados</DialogTitle>
-            <DialogDescription>
-              A tag lida contem dados diferentes dos que estao no formulario. Deseja sobrescrever os dados atuais com os da tag?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={handleOverwriteCancel}>Manter meus dados</Button>
-            <Button onClick={handleOverwriteConfirm}>Usar dados da tag</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

@@ -14,6 +14,14 @@ export function ReadTag() {
   return window['go']['main']['App']['ReadTag']();
 }
 
+export function StartTagWatcher() {
+  return window['go']['main']['App']['StartTagWatcher']();
+}
+
+export function StopTagWatcher() {
+  return window['go']['main']['App']['StopTagWatcher']();
+}
+
 export function ValidateColor(arg1) {
   return window['go']['main']['App']['ValidateColor'](arg1);
 }

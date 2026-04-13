@@ -212,7 +212,7 @@ func (r *Reader) WriteTagCFS(uid string, blocksToWrite []string, encrypted bool)
 			break
 		}
 		
-		err := r.WriteBlockDirectly(blockNum, key, blocksToWrite[i])
+		err := r.WriteBlockDirectly(blockNum, key, blocksToWrite[i], uid)
 		if err != nil {
 			return fmt.Errorf("erro ao escrever bloco %d: %v", blockNum, err)
 		}
@@ -226,18 +226,13 @@ func (r *Reader) WriteTagCFS(uid string, blocksToWrite []string, encrypted bool)
 		derivedKey := r.DeriveKeyFromUID(uid)
 		fmt.Printf("🔑 Atualizando trailer para compatibilidade Creality (key: %s)\n", derivedKey)
 		
-		// Access bits baseados no padrão da Creality
-		// 78 77 88 69 = 0111 1000 0111 0111 1000 1000 0110 1001
-		//    Setor 1 (blocos 4-7):
-		//    - Bloco 4-6: Read A|B, Write A|B
-		//    - Bloco 7 (trailer): Read KeyA: Never, Write KeyA: A, Access Bits: A, 
-		//                         Read KeyB: Never, Write KeyB: Never
-		trailer := derivedKey + "787788" + "69" + derivedKey // KeyA + Access + GPB + KeyB
+		// Access bits FF0780: permite leitura e escrita com KeyA ou KeyB
+		// GPB 69: padrão Creality
+		trailer := derivedKey + "FF078069" + derivedKey // KeyA + Access + GPB + KeyB
+
+		fmt.Printf("🔑 Trailer que será gravado: %s\n", trailer)
 		
-		// Neste caso, usamos a mesma chave derivada tanto para KeyA quanto para KeyB
-		// para manter a compatibilidade máxima com a impressora		fmt.Printf("🔑 Trailer que será gravado: %s\n", trailer)
-		
-		err := r.WriteBlockDirectly(7, key, trailer) // Usar key atual (FFFFFFFFFFFF) para escrever
+		err := r.WriteBlockDirectly(7, key, trailer, uid) // Usar key atual (FFFFFFFFFFFF) para escrever
 		if err != nil {
 			return fmt.Errorf("erro ao escrever trailer: %v", err)
 		}
@@ -248,27 +243,32 @@ func (r *Reader) WriteTagCFS(uid string, blocksToWrite []string, encrypted bool)
 }
 
 // WriteBlockDirectly escreve um bloco usando Load Key + Authenticate + Write
-func (r *Reader) WriteBlockDirectly(block byte, keyHex, dataHex string) error {
-	// Obter UID da tag
-	uid, _ := r.UID() // Ignorar erro pois não é crítico
-	// Lista de chaves para tentar
-	derivedKey := r.DeriveKeyFromUID(uid) // Tentar pegar o UID do bloco 0
-	keys := []string{
-		keyHex,             // A chave principal passada
-		derivedKey,         // A chave derivada do UID
-		"FFFFFFFFFFFF",     // A chave padrão
+func (r *Reader) WriteBlockDirectly(block byte, keyHex, dataHex string, uid ...string) error {
+	// Re-selecionar o cartão para garantir estado limpo antes de autenticar
+	r.UID()
+
+	// Montar lista de chaves para tentar (sem duplicatas)
+	keys := []string{keyHex}
+	seen := map[string]bool{keyHex: true}
+
+	// Derivar chave do UID se disponível (usa uid passado pelo chamador)
+	uidStr := ""
+	if len(uid) > 0 {
+		uidStr = uid[0]
 	}
-	
-	// Remover duplicatas
-	uniqueKeys := make([]string, 0)
-	seen := make(map[string]bool)
-	for _, key := range keys {
-		if !seen[key] {
-			seen[key] = true
-			uniqueKeys = append(uniqueKeys, key)
+	if uidStr != "" {
+		derivedKey := r.DeriveKeyFromUID(uidStr)
+		if !seen[derivedKey] {
+			keys = append(keys, derivedKey)
+			seen[derivedKey] = true
 		}
 	}
-	
+
+	// Chave padrão como fallback
+	if !seen["FFFFFFFFFFFF"] {
+		keys = append(keys, "FFFFFFFFFFFF")
+	}
+
 	var lastErr error
 	for _, key := range keys {
 		// 1. Load Key no slot 0
@@ -281,40 +281,46 @@ func (r *Reader) WriteBlockDirectly(block byte, keyHex, dataHex string) error {
 		cmd := append([]byte{0xFF, 0x82, 0x00, 0x00, 0x06}, keyBytes...)
 		resp, err := r.transmit(cmd)
 		if err != nil || len(resp) < 2 || resp[len(resp)-2] != 0x90 {
-			lastErr = fmt.Errorf("falha ao carregar key %s: %v", key, err)
+			lastErr = fmt.Errorf("falha ao carregar key para bloco %d", block)
 			continue
 		}
 		
-		// 2. Tentar authenticate com Key Type A primeiro, depois B
-		var authSuccess bool
-		for _, keyType := range []byte{KeyTypeA, KeyTypeB} {
+		// 2. Tentar authenticate + write com cada KeyType
+		// KeyB primeiro: access bits podem exigir KeyB para escrita
+		var written bool
+		for _, keyType := range []byte{KeyTypeB, KeyTypeA} {
 			authCmd := []byte{0xFF, 0x86, 0x00, 0x00, 0x05, 0x01, 0x00, block, keyType, 0x00}
 			resp, err = r.transmit(authCmd)
+			if err != nil || len(resp) < 2 || resp[len(resp)-2] != 0x90 {
+				// Auth falhou — re-selecionar cartão e recarregar key antes de tentar próximo tipo
+				r.UID()
+				reloadCmd := append([]byte{0xFF, 0x82, 0x00, 0x00, 0x06}, keyBytes...)
+				r.transmit(reloadCmd)
+				continue
+			}
+
+			// Auth OK — tentar escrever
+			data, err := hex.DecodeString(dataHex)
+			if err != nil || len(data) != 16 {
+				return errors.New("dados devem ter 32 hex chars")
+			}
+
+			writeCmd := append([]byte{0xFF, 0xD6, 0x00, block, 16}, data...)
+			resp, err = r.transmit(writeCmd)
 			if err == nil && len(resp) >= 2 && resp[len(resp)-2] == 0x90 {
-				authSuccess = true
+				written = true
 				break
 			}
+			// Escrita falhou — re-selecionar e recarregar key antes de tentar próximo tipo
+			r.UID()
+			reloadCmd := append([]byte{0xFF, 0x82, 0x00, 0x00, 0x06}, keyBytes...)
+			r.transmit(reloadCmd)
 		}
-		
-		if !authSuccess {
-			lastErr = fmt.Errorf("falha na autenticação do bloco %d com key %s", block, key)
-			continue
+
+		if written {
+			return nil
 		}
-		
-		// 3. Write block
-		data, err := hex.DecodeString(dataHex)
-		if err != nil || len(data) != 16 {
-			return errors.New("dados devem ter 32 hex chars")
-		}
-		
-		writeCmd := append([]byte{0xFF, 0xD6, 0x00, block, 16}, data...)
-		resp, err = r.transmit(writeCmd)
-		if err != nil || len(resp) < 2 || resp[len(resp)-2] != 0x90 {
-			lastErr = fmt.Errorf("falha na escrita do bloco %d com key %s: %v", block, key, err)
-			continue
-		}
-		
-		return nil // Sucesso!
+		lastErr = fmt.Errorf("falha na escrita do bloco %d", block)
 	}
 	
 	return lastErr // Retorna o último erro se todas as tentativas falharam
