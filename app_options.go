@@ -66,6 +66,7 @@ var materials = []MaterialOption{
 	// Materiais Creality (códigos 01xxx-29xxx) — Vendor "0276"
 	{"01001", "Hyper PLA", "0276"},
 	{"01002", "Hyper L-W PLA", "0276"},
+	{"01003", "Hyper Luminous", "0276"},
 	{"01004", "Hyper Stardust", "0276"},
 	{"01601", "Soleyin Ultra PLA", "0276"},
 	{"02001", "Hyper PLA-CF", "0276"},
@@ -76,6 +77,7 @@ var materials = []MaterialOption{
 	{"06002", "Hyper PETG", "0276"},
 	{"06003", "Hyper PETG-CF", "0276"},
 	{"06004", "Hyper PETG-GF", "0276"},
+	{"06005", "Soleyin Basic PETG", "0276"},
 	{"07001", "CR-ABS", "0276"},
 	{"07002", "Hyper PC", "0276"},
 	{"08001", "Ender-PLA", "0276"},
@@ -106,6 +108,10 @@ var materials = []MaterialOption{
 	{"E1006", "eSUN PLA-HS", "ESUN"},
 	{"E2001", "eSUN PETG", "ESUN"},
 	{"E2002", "eSUN PETG+HS", "ESUN"},
+	{"E2003", "eSUN PETG-Basic", "ESUN"},
+	{"E3001", "eSUN ABS+", "ESUN"},
+	{"E4001", "eSUN ASA+", "ESUN"},
+	{"E8001", "eSUN PET-Basic", "ESUN"},
 
 	// Materiais Polymaker — Vendor "POLY"
 	{"P1001", "Panchroma PLA Satin", "POLY"},
