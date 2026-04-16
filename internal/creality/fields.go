@@ -269,6 +269,7 @@ func (f Fields) GetMaterialName() string {
 		// Creality
 		"01001": "Hyper PLA",
 		"01002": "Hyper L-W PLA",
+		"01003": "Hyper Luminous",
 		"01004": "Hyper Stardust",
 		"01601": "Soleyin Ultra PLA",
 		"02001": "Hyper PLA-CF",
@@ -279,6 +280,7 @@ func (f Fields) GetMaterialName() string {
 		"06002": "Hyper PETG",
 		"06003": "Hyper PETG-CF",
 		"06004": "Hyper PETG-GF",
+		"06005": "Soleyin Basic PETG",
 		"07001": "CR-ABS",
 		"07002": "Hyper PC",
 		"08001": "Ender-PLA",
@@ -308,6 +310,10 @@ func (f Fields) GetMaterialName() string {
 		"E1006": "eSUN PLA-HS",
 		"E2001": "eSUN PETG",
 		"E2002": "eSUN PETG+HS",
+		"E2003": "eSUN PETG-Basic",
+		"E3001": "eSUN ABS+",
+		"E4001": "eSUN ASA+",
+		"E8001": "eSUN PET-Basic",
 		// Polymaker
 		"P1001": "Panchroma PLA Satin",
 		"P1002": "PolySonic PLA Pro",
