@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ebfe/scard"
 	"github.com/robertocorreajr/cfs_spool/internal/creality"
 	"github.com/robertocorreajr/cfs_spool/internal/rfid"
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -17,8 +18,8 @@ import (
 type App struct {
 	ctx       context.Context
 	stopWatch chan struct{}
+	watchDone chan struct{}
 	lastUID   string
-	failCount int // falhas consecutivas antes de considerar tag removida
 }
 
 // NewApp cria uma nova instância da aplicação
@@ -32,30 +33,32 @@ func (a *App) startup(ctx context.Context) {
 	a.StartTagWatcher()
 }
 
-// StartTagWatcher inicia polling automatico do leitor RFID
+// StartTagWatcher inicia watcher event-driven do leitor RFID (PC/SC SCardGetStatusChange)
 func (a *App) StartTagWatcher() {
 	if a.stopWatch != nil {
 		return
 	}
 	a.stopWatch = make(chan struct{})
+	a.watchDone = make(chan struct{})
 	go a.tagWatchLoop()
 }
 
-// StopTagWatcher para o polling do leitor
+// StopTagWatcher bloqueia até a goroutine do watcher encerrar completamente —
+// garante que nenhuma operação PC/SC do watcher esteja em voo antes de retornar.
 func (a *App) StopTagWatcher() {
-	if a.stopWatch != nil {
-		close(a.stopWatch)
-		a.stopWatch = nil
-		a.lastUID = ""
-		a.failCount = 0
+	if a.stopWatch == nil {
+		return
 	}
+	close(a.stopWatch)
+	<-a.watchDone
+	a.stopWatch = nil
+	a.watchDone = nil
+	a.lastUID = ""
 }
 
 func (a *App) tagWatchLoop() {
-	ticker := time.NewTicker(500 * time.Millisecond)
-	defer ticker.Stop()
+	defer close(a.watchDone)
 
-	// Só emitir "waiting" se não há tag conhecida (evita flicker após escrita)
 	if a.lastUID == "" {
 		wailsRuntime.EventsEmit(a.ctx, "tag:status", "waiting")
 	}
@@ -64,37 +67,95 @@ func (a *App) tagWatchLoop() {
 		select {
 		case <-a.stopWatch:
 			return
-		case <-ticker.C:
-			a.tryReadTag()
+		default:
+		}
+
+		ctx, err := scard.EstablishContext()
+		if err != nil {
+			if a.waitOrStop(2 * time.Second) {
+				return
+			}
+			continue
+		}
+
+		readers, err := ctx.ListReaders()
+		if err != nil || len(readers) == 0 {
+			ctx.Release()
+			wailsRuntime.EventsEmit(a.ctx, "tag:status", "no_reader")
+			if a.waitOrStop(2 * time.Second) {
+				return
+			}
+			continue
+		}
+
+		a.watchReader(ctx, readers[0])
+		ctx.Release()
+	}
+}
+
+// waitOrStop dorme por dur ou retorna true se o watcher foi parado.
+func (a *App) waitOrStop(dur time.Duration) bool {
+	select {
+	case <-a.stopWatch:
+		return true
+	case <-time.After(dur):
+		return false
+	}
+}
+
+// watchReader bloqueia em SCardGetStatusChange reagindo a inserção/remoção.
+// Retorna quando stopWatch fecha, quando o leitor é desconectado, ou em erro PC/SC.
+func (a *App) watchReader(ctx *scard.Context, reader string) {
+	states := []scard.ReaderState{{
+		Reader:       reader,
+		CurrentState: scard.StateUnaware,
+	}}
+
+	// Goroutine auxiliar: Cancel() desbloqueia GetStatusChange quando stopWatch fecha.
+	done := make(chan struct{})
+	defer close(done)
+	go func() {
+		select {
+		case <-a.stopWatch:
+			_ = ctx.Cancel()
+		case <-done:
+		}
+	}()
+
+	for {
+		if err := ctx.GetStatusChange(states, -1); err != nil {
+			return
+		}
+
+		present := states[0].EventState&scard.StatePresent != 0
+		wasPresent := states[0].CurrentState&scard.StatePresent != 0
+		states[0].CurrentState = states[0].EventState
+
+		switch {
+		case present && !wasPresent:
+			a.handleTagPresent()
+		case !present && wasPresent:
+			a.handleTagRemoved()
 		}
 	}
 }
 
-const maxFailsBeforeRemoved = 3 // falhas consecutivas para considerar tag removida
-
-func (a *App) tryReadTag() {
+func (a *App) handleTagPresent() {
 	data, err := a.ReadTag()
 	if err != nil {
-		a.failCount++
-		// Só considera tag removida após N falhas consecutivas
-		if a.lastUID != "" && a.failCount >= maxFailsBeforeRemoved {
-			a.lastUID = ""
-			a.failCount = 0
-			wailsRuntime.EventsEmit(a.ctx, "tag:status", "waiting")
-		}
 		return
 	}
-
-	a.failCount = 0
-
-	// Mesma tag: não re-emitir eventos
 	if data.UID == a.lastUID {
 		return
 	}
-
 	a.lastUID = data.UID
 	wailsRuntime.EventsEmit(a.ctx, "tag:status", "read")
 	wailsRuntime.EventsEmit(a.ctx, "tag:read", data)
+}
+
+func (a *App) handleTagRemoved() {
+	a.lastUID = ""
+	wailsRuntime.EventsEmit(a.ctx, "tag:status", "waiting")
 }
 
 // GetVersion retorna a versão da aplicação
