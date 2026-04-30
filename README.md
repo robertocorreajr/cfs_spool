@@ -36,36 +36,15 @@ Baixe a versão mais recente para sua plataforma:
 
 | Plataforma | Arquivo | Formato |
 |:---:|:---:|:---:|
-| macOS (Apple Silicon) | `cfs-spool-darwin-arm64.dmg` | DMG (arraste para Applications) |
+| macOS (Apple Silicon + Intel) | `cfs-spool-darwin-universal.dmg` | DMG (arraste para Applications) |
 | Linux (x86_64) | `cfs-spool-linux-amd64.zip` | ZIP (extraia e execute) |
 | Windows (x86_64) | `cfs-spool-windows-amd64.zip` | ZIP (extraia e execute) |
 
-### macOS: Permitir execução (Gatekeeper)
+### Instalação no macOS
 
-O aplicativo não é assinado com certificado Apple Developer, então o macOS bloqueia a primeira execução. Use um dos métodos abaixo para liberar:
-
-#### Método 1: Ajustes do Sistema (recomendado)
-
-1. Abra o DMG e arraste o **CFS Spool** para a pasta **Applications**
-2. Tente abrir o app normalmente (duplo clique) — ele será bloqueado
-3. **Importante**: No diálogo de bloqueio, clique em **"OK"**. **Não clique em "Mover para o Lixo"**, pois isso apagará o app e você precisará arrastar novamente do DMG
-4. Abra **Ajustes do Sistema** → **Privacidade e Segurança**
-5. Na seção "Segurança", você verá a mensagem sobre o CFS Spool
-6. Clique em **"Abrir Mesmo Assim"**
-7. Confirme na próxima janela
-
-![Bloqueio do Gatekeeper](docs/screenshots/macos-gatekeeper-blocked.png)
-![Privacidade e Segurança](docs/screenshots/macos-privacy-security.png)
-
-#### Método 2: Terminal
-
-Execute o comando abaixo no Terminal para remover a quarentena:
-
-```bash
-xattr -cr /Applications/CFS\ Spool.app
-```
-
-Depois, abra o app normalmente pelo Launchpad ou pasta Applications.
+1. Baixe o arquivo `.dmg` da [última release](https://github.com/robertocorreajr/cfs_spool/releases/latest)
+2. Abra o DMG e arraste o **CFS Spool** para a pasta **Applications**
+3. Abra o app pelo Launchpad ou pela pasta Applications
 
 ### Compilação a partir do Código Fonte
 

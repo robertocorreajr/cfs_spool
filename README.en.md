@@ -34,36 +34,15 @@ Download the latest release for your platform:
 
 | Platform | File | Format |
 |:---:|:---:|:---:|
-| macOS (Apple Silicon) | `cfs-spool-darwin-arm64.dmg` | DMG (drag to Applications) |
+| macOS (Apple Silicon + Intel) | `cfs-spool-darwin-universal.dmg` | DMG (drag to Applications) |
 | Linux (x86_64) | `cfs-spool-linux-amd64.zip` | ZIP (extract and run) |
 | Windows (x86_64) | `cfs-spool-windows-amd64.zip` | ZIP (extract and run) |
 
-### macOS: Bypass Gatekeeper
+### macOS Installation
 
-The app is not signed with an Apple Developer certificate, so macOS will block it on first launch. Use one of the methods below to allow it:
-
-#### Method 1: System Settings (recommended)
-
-1. Open the DMG and drag **CFS Spool** to the **Applications** folder
-2. Try opening the app normally (double-click) — it will be blocked
-3. **Important**: In the blocking dialog, click **"OK"**. **Do not click "Move to Trash"**, as this will delete the app and you'll need to drag it from the DMG again
-4. Open **System Settings** → **Privacy & Security**
-5. Under the "Security" section, you'll see a message about CFS Spool
-6. Click **"Open Anyway"**
-7. Confirm in the next dialog
-
-![Gatekeeper blocked](docs/screenshots/macos-gatekeeper-blocked.png)
-![Privacy & Security](docs/screenshots/macos-privacy-security.png)
-
-#### Method 2: Terminal
-
-Run the following command in Terminal to remove the quarantine attribute:
-
-```bash
-xattr -cr /Applications/CFS\ Spool.app
-```
-
-Then open the app normally from Launchpad or the Applications folder.
+1. Download the `.dmg` file from the [latest release](https://github.com/robertocorreajr/cfs_spool/releases/latest)
+2. Open the DMG and drag **CFS Spool** to the **Applications** folder
+3. Launch the app from Launchpad or the Applications folder
 
 ### Build from Source
 
