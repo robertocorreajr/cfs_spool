@@ -52,8 +52,8 @@ jobs:
       matrix:
         include:
           - os: macos-14
-            platform: darwin/arm64
-            name: darwin-arm64
+            platform: darwin/universal
+            name: darwin-universal
           - os: ubuntu-latest
             platform: linux/amd64
             name: linux-amd64
@@ -100,6 +100,38 @@ jobs:
           echo "tag=$TAG" >> $GITHUB_OUTPUT
         fi
 
+    - name: Import Apple Developer Certificate
+      if: runner.os == 'macOS'
+      env:
+        MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+        MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+        MACOS_KEYCHAIN_PWD: ${{ secrets.MACOS_KEYCHAIN_PWD }}
+      run: |
+        # Decodificar o .p12 do secret base64
+        echo "$MACOS_CERTIFICATE_P12" | base64 --decode > /tmp/certificate.p12
+
+        # Criar keychain temporária e desbloquear
+        security create-keychain -p "$MACOS_KEYCHAIN_PWD" build.keychain
+        security default-keychain -s build.keychain
+        security unlock-keychain -p "$MACOS_KEYCHAIN_PWD" build.keychain
+        security set-keychain-settings -lut 21600 build.keychain
+
+        # Importar o certificado e permitir uso pelo codesign
+        security import /tmp/certificate.p12 \
+          -k build.keychain \
+          -P "$MACOS_CERTIFICATE_PWD" \
+          -T /usr/bin/codesign \
+          -T /usr/bin/security
+
+        # Liberar acesso sem prompt
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$MACOS_KEYCHAIN_PWD" build.keychain
+
+        # Confirmar que a identidade está disponível
+        security find-identity -v -p codesigning build.keychain
+
+        # Limpar o .p12 do disco
+        rm -f /tmp/certificate.p12
+
     - name: Build with Wails
       shell: bash
       run: |
@@ -109,8 +141,13 @@ jobs:
         fi
         wails build -ldflags "-X main.version=${{ steps.version.outputs.tag }}" -platform ${{ matrix.platform }} $EXTRA_TAGS
 
-    - name: Create macOS DMG
+    - name: Sign and notarize macOS app
       if: runner.os == 'macOS'
+      env:
+        MACOS_CERTIFICATE_NAME: ${{ secrets.MACOS_CERTIFICATE_NAME }}
+        APPLE_ID: ${{ secrets.APPLE_ID }}
+        APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
       run: |
         brew install create-dmg librsvg
 
@@ -125,12 +162,33 @@ jobs:
         iconutil -c icns iconset.iconset -o app.icns
         cp app.icns "build/bin/CFS Spool.app/Contents/Resources/app.icns"
 
-        # Codesign ad-hoc APÓS todas as modificações no .app bundle
-        # Assinar de dentro para fora (binário primeiro, depois o bundle)
-        codesign -s - --force --options runtime "build/bin/CFS Spool.app/Contents/MacOS/cfs-spool"
-        codesign -s - --force --options runtime "build/bin/CFS Spool.app"
-        # Verificar se a assinatura é válida
-        codesign --verify --verbose "build/bin/CFS Spool.app"
+        # Assinar com Developer ID + hardened runtime + entitlements
+        codesign --force --deep --options runtime \
+          --entitlements build/darwin/entitlements.plist \
+          --sign "$MACOS_CERTIFICATE_NAME" \
+          "build/bin/CFS Spool.app"
+
+        # Verificar assinatura
+        codesign --verify --deep --strict --verbose=2 "build/bin/CFS Spool.app"
+
+        # Empacotar para notarização (sempre ditto, nunca zip)
+        ditto -c -k --keepParent "build/bin/CFS Spool.app" "build/bin/cfs-spool-notarize.zip"
+
+        # Submeter para notarização Apple
+        xcrun notarytool submit "build/bin/cfs-spool-notarize.zip" \
+          --apple-id "$APPLE_ID" \
+          --team-id "$APPLE_TEAM_ID" \
+          --password "$APPLE_APP_PASSWORD" \
+          --wait
+
+        # Anexar ticket de notarização ao .app
+        xcrun stapler staple "build/bin/CFS Spool.app"
+
+        # Validação final do Gatekeeper
+        spctl -a -vvv -t install "build/bin/CFS Spool.app"
+
+        # Limpar zip de notarização (só usado pra envio)
+        rm -f "build/bin/cfs-spool-notarize.zip"
 
         # Gerar background do DMG
         rsvg-convert -w 600 -h 400 assets/dmg-background.svg -o dmg-background.png
@@ -147,6 +205,22 @@ jobs:
           --app-drop-link 450 200 \
           "build/bin/cfs-spool.dmg" \
           "build/bin/CFS Spool.app"
+
+        # Assinar e notarizar o DMG (evita warning ao abrir o .dmg baixado)
+        codesign --force --sign "$MACOS_CERTIFICATE_NAME" "build/bin/cfs-spool.dmg"
+
+        xcrun notarytool submit "build/bin/cfs-spool.dmg" \
+          --apple-id "$APPLE_ID" \
+          --team-id "$APPLE_TEAM_ID" \
+          --password "$APPLE_APP_PASSWORD" \
+          --wait
+
+        xcrun stapler staple "build/bin/cfs-spool.dmg"
+
+    - name: Cleanup keychain
+      if: runner.os == 'macOS' && always()
+      run: |
+        security delete-keychain build.keychain || true
 
     - name: Upload macOS DMG
       if: runner.os == 'macOS'
@@ -224,33 +298,15 @@ jobs:
 
           | Platform | File |
           |----------|------|
-          | macOS (Apple Silicon) | `cfs-spool-darwin-arm64.dmg` |
+          | macOS (Universal — Apple Silicon + Intel) | `cfs-spool-darwin-universal.dmg` |
           | Linux (x86_64) | `cfs-spool-linux-amd64.zip` |
           | Windows (x86_64) | `cfs-spool-windows-amd64.zip` |
 
           ### Quick Start
 
-          - **macOS**: Abra o DMG e arraste para Applications
+          - **macOS**: Abra o DMG e arraste para Applications. App assinado e notarizado pela Apple — abre sem avisos.
           - **Linux/Windows**: Extraia o ZIP e execute o binário `cfs-spool`
           - Conecte o leitor ACR122U RFID
-
-          ### macOS: Aviso de Seguranca / Security Warning
-
-          O app nao e assinado com certificado Apple Developer. O macOS bloqueia a primeira execucao.
-          The app is not signed with an Apple Developer certificate. macOS will block first launch.
-
-          **Metodo 1 / Method 1 — Ajustes do Sistema / System Settings (recomendado / recommended):**
-          1. Tente abrir normalmente / Try opening normally
-          2. Ajustes do Sistema → Privacidade e Seguranca → "Abrir Mesmo Assim"
-          3. System Settings → Privacy & Security → "Open Anyway"
-
-          **Metodo 2 / Method 2 — Terminal:**
-          ```
-          xattr -cr /Applications/CFS\ Spool.app
-          ```
-
-          Para mais detalhes, veja o [README](https://github.com/robertocorreajr/cfs_spool#macos-permitir-execucao-gatekeeper).
-          For detailed instructions, see the [README](https://github.com/robertocorreajr/cfs_spool#macos-permitir-execucao-gatekeeper).
 
           ### Prerequisites
 
