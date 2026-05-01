@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -49,8 +49,16 @@ interface UpdateNotifierProps {
 export function UpdateNotifier({ autoCheckEvent = true }: UpdateNotifierProps = {}) {
   const [info, setInfo] = useState<UpdateInfo | null>(null);
   const [showDialog, setShowDialog] = useState(false);
+  // lastShownRef dedupe versão já apresentada — protege contra o evento
+  // "update:available" do startup chegar logo depois do CheckForUpdate
+  // pull do mount (ou vice-versa) e disparar dois toasts iguais.
+  const lastShownRef = useRef<string>("");
 
   const presentUpdate = (data: UpdateInfo) => {
+    if (lastShownRef.current === data.version) {
+      return;
+    }
+    lastShownRef.current = data.version;
     setInfo(data);
     toast(`Nova versão ${data.version} disponível`, {
       description: `Você está na ${data.current || "dev"}.`,
@@ -77,13 +85,33 @@ export function UpdateNotifier({ autoCheckEvent = true }: UpdateNotifierProps = 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Subscreve ao evento "update:available" emitido pelo backend no startup.
+  // Verificação proativa: o backend dispara o evento "update:available"
+  // numa goroutine, mas pode chegar antes do listener estar pronto. Para
+  // evitar essa race, o componente também faz uma chamada ativa via
+  // CheckForUpdate no mount — assim o usuário SEMPRE vê o toast no startup
+  // se houver versão nova e não ignorada.
   useEffect(() => {
     if (!autoCheckEvent) return;
+
     const off = EventsOn("update:available", (data: UpdateInfo) => {
       presentUpdate(data);
     });
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = (await CheckForUpdate()) as UpdateInfo;
+        if (cancelled) return;
+        if (data.available && !data.ignored) {
+          presentUpdate(data);
+        }
+      } catch {
+        // Silencioso: erro de rede / 404 / rate limit não trava o app.
+      }
+    })();
+
     return () => {
+      cancelled = true;
       off();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

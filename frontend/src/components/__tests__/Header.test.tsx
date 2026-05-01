@@ -55,7 +55,7 @@ describe("Header", () => {
     render(<Header version="v3.0.0" uid="" onCheckForUpdate={onCheck} />);
 
     fireEvent.click(
-      screen.getByRole("button", { name: /Verificar atualizações/i }),
+      screen.getByRole("button", { name: /Procurar atualizações/i }),
     );
 
     await waitFor(() => {

@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 import appIcon from "@/assets/appicon.png";
 import { triggerManualCheck } from "@/components/UpdateNotifier";
 import { useState } from "react";
@@ -47,14 +47,19 @@ export function Header({ version, uid, onCheckForUpdate }: HeaderProps) {
         )}
         <Button
           variant="ghost"
-          size="icon"
-          className="h-7 w-7"
-          aria-label="Verificar atualizações"
-          title="Verificar atualizações"
+          size="sm"
+          className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+          aria-label="Procurar atualizações"
+          title="Procurar atualizações"
           disabled={checking}
           onClick={handleCheck}
         >
-          <RefreshCw className={"h-4 w-4 " + (checking ? "animate-spin" : "")} />
+          {checking ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Search className="h-3.5 w-3.5" />
+          )}
+          Atualizações
         </Button>
       </div>
     </div>
