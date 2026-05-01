@@ -22,6 +22,13 @@ type App struct {
 	lastUID   string
 }
 
+// emitEvent é uma indireção sobre wailsRuntime.EventsEmit. Em produção
+// delega para o runtime real; em testes pode ser sobrescrito (capturando
+// chamadas como spy) sem precisar instanciar o runtime Wails.
+var emitEvent = func(ctx context.Context, name string, data ...interface{}) {
+	wailsRuntime.EventsEmit(ctx, name, data...)
+}
+
 // NewApp cria uma nova instância da aplicação
 func NewApp() *App {
 	return &App{}
@@ -60,7 +67,7 @@ func (a *App) tagWatchLoop() {
 	defer close(a.watchDone)
 
 	if a.lastUID == "" {
-		wailsRuntime.EventsEmit(a.ctx, "tag:status", "waiting")
+		emitEvent(a.ctx, "tag:status", "waiting")
 	}
 
 	for {
@@ -81,7 +88,7 @@ func (a *App) tagWatchLoop() {
 		readers, err := ctx.ListReaders()
 		if err != nil || len(readers) == 0 {
 			ctx.Release()
-			wailsRuntime.EventsEmit(a.ctx, "tag:status", "no_reader")
+			emitEvent(a.ctx, "tag:status", "no_reader")
 			if a.waitOrStop(2 * time.Second) {
 				return
 			}
@@ -149,13 +156,13 @@ func (a *App) handleTagPresent() {
 		return
 	}
 	a.lastUID = data.UID
-	wailsRuntime.EventsEmit(a.ctx, "tag:status", "read")
-	wailsRuntime.EventsEmit(a.ctx, "tag:read", data)
+	emitEvent(a.ctx, "tag:status", "read")
+	emitEvent(a.ctx, "tag:read", data)
 }
 
 func (a *App) handleTagRemoved() {
 	a.lastUID = ""
-	wailsRuntime.EventsEmit(a.ctx, "tag:status", "waiting")
+	emitEvent(a.ctx, "tag:status", "waiting")
 }
 
 // GetVersion retorna a versão da aplicação
