@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { WriteTag, GetOptions, GetVersion } from "../../wailsjs/go/main/App";
 import { EventsOn } from "../../wailsjs/runtime/runtime";
 import { Header } from "@/components/Header";
+import { UpdateNotifier } from "@/components/UpdateNotifier";
 import { Save } from "lucide-react";
 import type { OptionsResponse } from "@/types/spool";
 
@@ -125,6 +126,7 @@ export function SpoolForm() {
   // Layout de pagina completa
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      <UpdateNotifier />
       <Header version={version} uid={uid} />
       {statusBar()}
       <div className="flex-1 p-4 pb-24">

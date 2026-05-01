@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -11,8 +12,16 @@ import (
 	"github.com/ebfe/scard"
 	"github.com/robertocorreajr/cfs_spool/internal/creality"
 	"github.com/robertocorreajr/cfs_spool/internal/rfid"
+	"github.com/robertocorreajr/cfs_spool/internal/updater"
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
+
+// updaterRepo é o repositório oficial consultado para verificar releases.
+const updaterRepo = "robertocorreajr/cfs_spool"
+
+// platformGOOS é uma indireção sobre runtime.GOOS para que testes possam
+// simular cada SO ao escolher o asset de download recomendado.
+var platformGOOS = runtime.GOOS
 
 // App estrutura principal da aplicação Wails
 type App struct {
@@ -20,6 +29,12 @@ type App struct {
 	stopWatch chan struct{}
 	watchDone chan struct{}
 	lastUID   string
+
+	// updateChecker e updateConfig são injetáveis em testes (httptest server +
+	// arquivo temporário). Em produção NewApp inicializa apontando para o
+	// repo oficial e UserConfigDir/cfs_spool/updater.json.
+	updateChecker *updater.Checker
+	updateConfig  *updater.ConfigStore
 }
 
 // emitEvent é uma indireção sobre wailsRuntime.EventsEmit. Em produção
@@ -31,13 +46,20 @@ var emitEvent = func(ctx context.Context, name string, data ...interface{}) {
 
 // NewApp cria uma nova instância da aplicação
 func NewApp() *App {
-	return &App{}
+	return &App{
+		updateChecker: updater.NewChecker(updaterRepo),
+		updateConfig:  updater.NewConfigStore(),
+	}
 }
 
 // startup é chamado quando a aplicação inicia
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	a.StartTagWatcher()
+
+	// Verificação de updates roda em goroutine para não atrasar o startup
+	// se a rede estiver lenta. Erros (offline, rate limit) são silenciosos.
+	go a.checkAndEmitUpdate()
 }
 
 // StartTagWatcher inicia watcher event-driven do leitor RFID (PC/SC SCardGetStatusChange)
@@ -168,6 +190,106 @@ func (a *App) handleTagRemoved() {
 // GetVersion retorna a versão da aplicação
 func (a *App) GetVersion() string {
 	return version
+}
+
+// UpdateInfo é o payload retornado por CheckForUpdate e emitido no evento
+// "update:available" — contém tudo que o frontend precisa para decidir
+// entre exibir o toast, o modal de changelog ou nada.
+type UpdateInfo struct {
+	// Available é true quando a release remota é mais nova que a versão atual.
+	Available bool `json:"available"`
+	// Ignored é true se o usuário já dispensou esta versão específica
+	// (Available continua refletindo o estado real para que CheckForUpdate
+	// manual mostre uma resposta consistente).
+	Ignored bool `json:"ignored"`
+	// Current é a versão local (a.GetVersion()).
+	Current string `json:"current"`
+	// Os campos abaixo são populados a partir do Release retornado pelo GitHub.
+	Version     string `json:"version"`
+	Name        string `json:"name"`
+	URL         string `json:"url"`
+	PublishedAt string `json:"publishedAt"`
+	Body        string `json:"body"`
+	// OS é o runtime.GOOS local — frontend usa só pra rotular o botão.
+	OS string `json:"os"`
+	// DownloadURL aponta para o asset que casa com OS local. Vazio se
+	// nenhum asset bater (frontend cai em URL da release page).
+	DownloadURL string `json:"downloadUrl"`
+	// DownloadName é o nome do arquivo que será baixado (ex.:
+	// "cfs-spool-darwin-universal.dmg") — útil para mostrar no botão.
+	DownloadName string `json:"downloadName"`
+}
+
+// CheckForUpdate consulta o GitHub Releases e retorna UpdateInfo.
+// Pode ser chamado pelo botão "Verificar atualizações" no UI; no startup
+// usamos checkAndEmitUpdate (que emite evento em vez de devolver valor).
+func (a *App) CheckForUpdate() (*UpdateInfo, error) {
+	if a.updateChecker == nil {
+		return nil, fmt.Errorf("updater não inicializado")
+	}
+
+	ctx := a.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	rel, err := a.updateChecker.CheckLatestRelease(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	info := &UpdateInfo{
+		Current:     version,
+		Version:     rel.Version,
+		Name:        rel.Name,
+		URL:         rel.URL,
+		PublishedAt: rel.PublishedAt,
+		Body:        rel.Body,
+		Available:   updater.IsNewer(rel.Version, version),
+		OS:          platformGOOS,
+	}
+	if asset := updater.PickAsset(rel.Assets, platformGOOS); asset != nil {
+		info.DownloadURL = asset.URL
+		info.DownloadName = asset.Name
+	}
+	if a.updateConfig != nil {
+		info.Ignored = a.updateConfig.IsIgnored(rel.Version)
+	}
+	return info, nil
+}
+
+// IgnoreUpdateVersion persiste no config local que o usuário não quer mais
+// ser notificado sobre essa versão específica — futuras checagens silenciam
+// o evento até que apareça uma versão ainda mais nova.
+func (a *App) IgnoreUpdateVersion(version string) error {
+	if a.updateConfig == nil {
+		return fmt.Errorf("config de updates não inicializado")
+	}
+	return a.updateConfig.IgnoreVersion(version)
+}
+
+// OpenURL abre uma URL no browser do sistema usando o runtime Wails.
+// Wrapper minimal para que o frontend possa chamar via binding sem precisar
+// importar o módulo runtime no JavaScript em testes.
+func (a *App) OpenURL(url string) {
+	if a.ctx == nil {
+		return
+	}
+	wailsRuntime.BrowserOpenURL(a.ctx, url)
+}
+
+// checkAndEmitUpdate é o fluxo do startup: consulta a release, valida
+// que é nova e não-ignorada, e emite "update:available" para o frontend.
+// Erros são engolidos — o startup nunca falha por causa de update check.
+func (a *App) checkAndEmitUpdate() {
+	info, err := a.CheckForUpdate()
+	if err != nil {
+		return
+	}
+	if !info.Available || info.Ignored {
+		return
+	}
+	emitEvent(a.ctx, "update:available", info)
 }
 
 // --- Tipos para comunicação com o frontend ---

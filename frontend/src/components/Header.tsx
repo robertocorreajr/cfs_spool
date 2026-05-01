@@ -1,12 +1,47 @@
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Sparkles } from "lucide-react";
 import appIcon from "@/assets/appicon.png";
+import { useEffect, useState } from "react";
+import { EventsEmit, EventsOn } from "../../wailsjs/runtime/runtime";
 
 interface HeaderProps {
   version: string;
   uid: string;
+  /**
+   * hasUpdate força o estado de "atualização disponível" em testes.
+   * Em produção é alimentado pelos eventos "update:available" /
+   * "update:cleared" emitidos pelo UpdateNotifier e pelo backend.
+   */
+  hasUpdate?: boolean;
 }
 
-export function Header({ version, uid }: HeaderProps) {
+// Header exibe título, UID, versão e — quando há nova release — um
+// ícone que pisca no canto superior direito. Clique abre o modal de
+// changelog (via evento "update:show" consumido pelo UpdateNotifier).
+// Sem update disponível, o ícone fica oculto.
+export function Header({ version, uid, hasUpdate }: HeaderProps) {
+  const [internalHasUpdate, setInternalHasUpdate] = useState(false);
+
+  useEffect(() => {
+    const offAvailable = EventsOn("update:available", () => {
+      setInternalHasUpdate(true);
+    });
+    const offCleared = EventsOn("update:cleared", () => {
+      setInternalHasUpdate(false);
+    });
+    return () => {
+      offAvailable();
+      offCleared();
+    };
+  }, []);
+
+  const updateAvailable = hasUpdate ?? internalHasUpdate;
+
+  const handleClick = () => {
+    EventsEmit("update:show");
+  };
+
   return (
     <div className="flex items-center justify-between px-5 py-3 border-b bg-background">
       <div className="flex items-center gap-2.5">
@@ -23,6 +58,18 @@ export function Header({ version, uid }: HeaderProps) {
           <Badge variant="outline" className="font-normal text-muted-foreground">
             {version}
           </Badge>
+        )}
+        {updateAvailable && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 animate-pulse"
+            aria-label="Atualização disponível — clique para ver"
+            title="Atualização disponível"
+            onClick={handleClick}
+          >
+            <Sparkles className="h-4 w-4" />
+          </Button>
         )}
       </div>
     </div>

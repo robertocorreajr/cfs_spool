@@ -83,7 +83,6 @@ export namespace main {
 	export class TagData {
 	    uid: string;
 	    date: string;
-	    dateDisplay: string;
 	    supplierCode: string;
 	    supplierName: string;
 	    materialCode: string;
@@ -102,7 +101,6 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.uid = source["uid"];
 	        this.date = source["date"];
-	        this.dateDisplay = source["dateDisplay"];
 	        this.supplierCode = source["supplierCode"];
 	        this.supplierName = source["supplierName"];
 	        this.materialCode = source["materialCode"];
@@ -112,6 +110,38 @@ export namespace main {
 	        this.lengthDisplay = source["lengthDisplay"];
 	        this.serial = source["serial"];
 	        this.isBlank = source["isBlank"];
+	    }
+	}
+	export class UpdateInfo {
+	    available: boolean;
+	    ignored: boolean;
+	    current: string;
+	    version: string;
+	    name: string;
+	    url: string;
+	    publishedAt: string;
+	    body: string;
+	    os: string;
+	    downloadUrl: string;
+	    downloadName: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.available = source["available"];
+	        this.ignored = source["ignored"];
+	        this.current = source["current"];
+	        this.version = source["version"];
+	        this.name = source["name"];
+	        this.url = source["url"];
+	        this.publishedAt = source["publishedAt"];
+	        this.body = source["body"];
+	        this.os = source["os"];
+	        this.downloadUrl = source["downloadUrl"];
+	        this.downloadName = source["downloadName"];
 	    }
 	}
 	

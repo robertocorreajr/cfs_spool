@@ -1,5 +1,14 @@
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+
+const mockEventsEmit = vi.fn();
+
+// Mocks dos bindings — devem vir antes do import do componente.
+vi.mock("../../../wailsjs/runtime/runtime", () => ({
+  EventsOn: () => () => {},
+  EventsEmit: (...args: unknown[]) => mockEventsEmit(...args),
+}));
+
 import { Header } from "@/components/Header";
 
 describe("Header", () => {
@@ -15,7 +24,6 @@ describe("Header", () => {
 
   it("não renderiza o badge de versão quando version é string vazia", () => {
     const { container } = render(<Header version="" uid="" />);
-    // Apenas dois badges existem no design (UID + versão); ambos sumem com props vazias.
     expect(container.querySelectorAll("[class*=Badge]").length).toBe(0);
   });
 
@@ -28,5 +36,30 @@ describe("Header", () => {
   it("não exibe UID quando vazio", () => {
     render(<Header version="v3.0.0" uid="" />);
     expect(screen.queryByText(/UID/)).not.toBeInTheDocument();
+  });
+
+  it("não renderiza o ícone de atualização quando hasUpdate é false", () => {
+    render(<Header version="v3.0.0" uid="" hasUpdate={false} />);
+    expect(
+      screen.queryByRole("button", { name: /Atualização disponível/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renderiza ícone piscando quando hasUpdate é true", () => {
+    render(<Header version="v3.0.0" uid="" hasUpdate />);
+    expect(
+      screen.getByRole("button", { name: /Atualização disponível/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("clicar no ícone emite update:show para abrir o modal", () => {
+    mockEventsEmit.mockClear();
+    render(<Header version="v3.0.0" uid="" hasUpdate />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /Atualização disponível/i }),
+    );
+
+    expect(mockEventsEmit).toHaveBeenCalledWith("update:show");
   });
 });
