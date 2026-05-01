@@ -1,6 +1,9 @@
 package creality
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 // TestFormatDate documenta o comportamento ATUAL de FormatDate.
 //
@@ -197,6 +200,126 @@ func TestIsBlankTag(t *testing.T) {
 			resultado := f.IsBlankTag()
 			if resultado != tt.esperado {
 				t.Errorf("IsBlankTag() para tag %+v = %v, esperado %v", f, resultado, tt.esperado)
+			}
+		})
+	}
+}
+
+// TestDecodeLengthToGrams cobre os 4 valores pré-definidos (preservam
+// gramatura exata via lookup), valores custom (cm * 3) e hex inválido.
+func TestDecodeLengthToGrams(t *testing.T) {
+	testes := []struct {
+		nome     string
+		hex      string
+		ok       bool
+		esperado int
+	}{
+		// Pré-definidos (lookup direto, gramatura exata)
+		{"250g (0053)", "0053", true, 250},
+		{"500g (00A5)", "00A5", true, 500},
+		{"1kg (014A)", "014A", true, 1000},
+		{"2kg (0294)", "0294", true, 2000},
+		{"lookup case-insensitive", "00a5", true, 500},
+
+		// Custom (cm * 3)
+		{"3kg custom (03E8 = 1000cm)", "03E8", true, 3000},
+		{"5kg custom (0682 = 1666cm trunca de 5000/3)", "0682", true, 4998},
+		{"10kg custom (0D05 = 3333cm)", "0D05", true, 9999},
+		{"saturado (FFFF = 65535cm)", "FFFF", true, 196605},
+		{"zero (0000)", "0000", true, 0},
+
+		// Inválidos
+		{"hex com Z", "00ZZ", false, 0},
+		{"vazio", "", false, 0},
+		{"hex muito longo", "DEADBEEF1", false, 0}, // > 32 bits
+	}
+
+	for _, tt := range testes {
+		t.Run(tt.nome, func(t *testing.T) {
+			gramas, err := DecodeLengthToGrams(tt.hex)
+			if tt.ok && err != nil {
+				t.Fatalf("erro inesperado para %q: %v", tt.hex, err)
+			}
+			if !tt.ok && err == nil {
+				t.Fatalf("esperava erro para %q, recebeu %d", tt.hex, gramas)
+			}
+			if tt.ok && gramas != tt.esperado {
+				t.Errorf("DecodeLengthToGrams(%q) = %d, esperado %d", tt.hex, gramas, tt.esperado)
+			}
+		})
+	}
+}
+
+// TestLengthRoundTripCripto valida o round-trip completo do comprimento:
+// gramas → convertLength (em app.go, simulado aqui) → ASCIIConcat → encrypt
+// → decrypt → ParseFields → DecodeLengthToGrams → gramas.
+//
+// Para gramaturas múltiplas de 3 (ou pré-definidas), o valor é preservado
+// exato. Caso contrário, há perda de até 2g devido ao truncamento integer
+// na conversão cm = gramas/3.
+func TestLengthRoundTripCripto(t *testing.T) {
+	// Aqui replicamos a lógica de app.convertLength para custom (cm = gramas/3)
+	encodeCustom := func(gramas int) string {
+		cm := min(gramas/3, 65535)
+		return fmt.Sprintf("%04X", cm)
+	}
+
+	testes := []struct {
+		nome    string
+		entrada string // código hex direto a injetar em fields.Length
+		esperado int
+	}{
+		{"pre-definido 250g", "0053", 250},
+		{"pre-definido 500g", "00A5", 500},
+		{"pre-definido 1kg", "014A", 1000},
+		{"pre-definido 2kg", "0294", 2000},
+		{"custom 3kg multiplo de 3", encodeCustom(3000), 3000},
+		{"custom 9kg multiplo de 3", encodeCustom(9000), 9000},
+	}
+
+	for _, tt := range testes {
+		t.Run(tt.nome, func(t *testing.T) {
+			f := Fields{
+				Batch:    "A2",
+				Date:     "10524",
+				Supplier: "0276",
+				Material: "01001",
+				Color:    "0FF4010",
+				Length:   tt.entrada,
+				Serial:   "000001",
+				Reserve:  "0000",
+			}
+
+			ascii, err := f.ASCIIConcat()
+			if err != nil {
+				t.Fatalf("ASCIIConcat: %v", err)
+			}
+
+			b4, b5, b6, err := EncryptPayloadToBlocks(ascii)
+			if err != nil {
+				t.Fatalf("EncryptPayloadToBlocks: %v", err)
+			}
+
+			plain, err := DecryptBlocks(b4 + b5 + b6)
+			if err != nil {
+				t.Fatalf("DecryptBlocks: %v", err)
+			}
+
+			parsed, err := ParseFields(plain)
+			if err != nil {
+				t.Fatalf("ParseFields: %v", err)
+			}
+
+			if parsed.Length != tt.entrada {
+				t.Errorf("Length apos round-trip = %q, esperado %q", parsed.Length, tt.entrada)
+			}
+
+			gramas, err := DecodeLengthToGrams(parsed.Length)
+			if err != nil {
+				t.Fatalf("DecodeLengthToGrams: %v", err)
+			}
+			if gramas != tt.esperado {
+				t.Errorf("gramas apos round-trip = %d, esperado %d", gramas, tt.esperado)
 			}
 		})
 	}
