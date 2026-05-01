@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -229,6 +230,33 @@ func (f Fields) FormatLength() string {
 	default:
 		return f.Length + "cm"
 	}
+}
+
+// DecodeLengthToGrams é a função inversa do convertLength em app.go.
+// Para os 4 valores pré-definidos retorna a gramatura exata; para valores
+// custom converte cm hexadecimal para gramas multiplicando por 3.
+//
+// Limitação conhecida: o encoding cm = gramas/3 perde precisão (truncamento)
+// para gramaturas que não são múltiplos de 3. O round-trip preserva valores
+// exatos apenas quando gramas % 3 == 0.
+func DecodeLengthToGrams(lengthHex string) (int, error) {
+	// Lookup inverso para os 4 valores pré-definidos (preserva gramatura exata)
+	predefinidos := map[string]int{
+		"0053": 250,
+		"00A5": 500,
+		"014A": 1000,
+		"0294": 2000,
+	}
+	if g, ok := predefinidos[strings.ToUpper(lengthHex)]; ok {
+		return g, nil
+	}
+
+	// Caso geral: hex → cm → gramas (cm * 3)
+	cm, err := strconv.ParseUint(lengthHex, 16, 32)
+	if err != nil {
+		return 0, fmt.Errorf("comprimento hex inválido: %q: %w", lengthHex, err)
+	}
+	return int(cm) * 3, nil
 }
 
 // GetMaterialName retorna o nome do material baseado no código
