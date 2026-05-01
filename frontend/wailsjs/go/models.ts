@@ -115,6 +115,32 @@ export namespace main {
 	    }
 	}
 	
+	export class UpdateInfo {
+	    available: boolean;
+	    ignored: boolean;
+	    current: string;
+	    version: string;
+	    name: string;
+	    url: string;
+	    publishedAt: string;
+	    body: string;
+
+	    static createFrom(source: any = {}) {
+	        return new UpdateInfo(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.available = source["available"];
+	        this.ignored = source["ignored"];
+	        this.current = source["current"];
+	        this.version = source["version"];
+	        this.name = source["name"];
+	        this.url = source["url"];
+	        this.publishedAt = source["publishedAt"];
+	        this.body = source["body"];
+	    }
+	}
 	export class WriteRequest {
 	    date: string;
 	    supplier: string;
