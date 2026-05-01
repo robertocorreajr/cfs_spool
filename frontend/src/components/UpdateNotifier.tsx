@@ -15,7 +15,7 @@ import {
   IgnoreUpdateVersion,
   OpenURL,
 } from "../../wailsjs/go/main/App";
-import { EventsOn } from "../../wailsjs/runtime/runtime";
+import { EventsEmit, EventsOn } from "../../wailsjs/runtime/runtime";
 
 // UpdateInfo espelha o struct exposto pelo backend (Go App.UpdateInfo).
 // Mantemos a tipagem local em vez de importar do `wailsjs/go/models`
@@ -122,6 +122,8 @@ export function UpdateNotifier({ autoCheckEvent = true }: UpdateNotifierProps = 
       await IgnoreUpdateVersion(version);
       toast.success(`Versão ${version} silenciada nesta instalação`);
       setShowDialog(false);
+      // Avisa outros componentes (Header) para apagar o badge de "novidade".
+      EventsEmit("update:cleared");
     } catch (err) {
       toast.error(`Erro ao silenciar versão: ${String(err)}`);
     }
