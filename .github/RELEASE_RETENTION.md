@@ -142,21 +142,22 @@ The workflow ([`.github/workflows/release-retention.yml`](workflows/release-rete
 
 1. Lists every release via `gh release list --limit 200`.
 2. Classifies each release as `stable`, `pre-release`, or `milestone`.
-3. Picks the 5 most recent stable releases (by published date) and
-   protects them.
+3. Picks the 5 most recent stable releases (by `createdAt`) and protects
+   them.
 4. Protects every tag listed in the milestone allowlist.
 5. For all other releases, lists their assets, deletes each via
    `gh release delete-asset`, and appends the standard retired-assets
    note to the release body if not already present.
 6. Never invokes `gh release delete` or `git tag -d`.
 
-### First run
+### First run (historical)
 
-The very first run after merging this policy will retire roughly 25
-releases worth of binaries. That is the intended one-time correction to
-align history with the policy. If you want to audit the plan before that
-happens, run the workflow once via `workflow_dispatch` with
-`dry_run=true` **before merging** (or before the next release publishes).
+The first run after this policy was merged retired ~25 releases worth of
+binaries — a one-time correction to align pre-existing history with the
+new rules. From this point on the workflow only retires what each new
+release event makes obsolete. The retroactive run was triggered manually
+via `workflow_dispatch` on 2026-05-01 (run
+[25218728884](https://github.com/robertocorreajr/cfs_spool/actions/runs/25218728884)).
 
 ### Manual restoration
 
@@ -182,5 +183,7 @@ recoverable from source.
 
 ## Change history
 
-- **2026-05-01** — Policy created (issue
-  [#63](https://github.com/robertocorreajr/cfs_spool/issues/63)).
+- **2026-05-01** — Policy created and applied retroactively (issue
+  [#63](https://github.com/robertocorreajr/cfs_spool/issues/63),
+  PR [#64](https://github.com/robertocorreajr/cfs_spool/pull/64)).
+  Workflow wired to `release:published` so future cleanups are automatic.
