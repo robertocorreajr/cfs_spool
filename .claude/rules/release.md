@@ -65,6 +65,19 @@ gh release edit vX.Y.Z --notes-file path/to/notes.md
 
 Use the same structure as `.github/RELEASE_TEMPLATE.md`.
 
+## Asset retention
+
+The binaries attached to old releases are pruned according to a separate,
+documented policy. **Tags and release notes are never deleted** — only
+the attached download artifacts may be retired.
+
+- **Policy**: [`.github/RELEASE_RETENTION.md`](../../.github/RELEASE_RETENTION.md).
+- **Cleanup workflow**: `.github/workflows/release-retention.yml` (manual
+  trigger; always start with `dry_run=true`).
+- When cutting a milestone release that should keep its assets forever,
+  add the tag to **both** the milestone table in `RELEASE_RETENTION.md`
+  **and** the `MILESTONES` env var in the workflow, in the same PR.
+
 ## Reminder
 
 If you (Claude Code) are about to merge a PR that introduces user-visible
