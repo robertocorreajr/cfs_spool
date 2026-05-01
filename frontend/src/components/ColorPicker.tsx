@@ -4,6 +4,11 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { presetColors } from "@/data/presets";
+import {
+  cleanHexInput,
+  isCompleteHex,
+  shouldSyncFromProp,
+} from "@/lib/colorPickerLogic";
 
 interface ColorPickerProps {
   value: string;
@@ -15,9 +20,9 @@ export function ColorPicker({ value, onChange }: ColorPickerProps) {
   const [hexInput, setHexInput] = useState(value);
 
   const handleHexChange = (hex: string) => {
-    const clean = hex.replace(/[^0-9A-Fa-f]/g, "").slice(0, 6);
+    const clean = cleanHexInput(hex);
     setHexInput(clean);
-    if (clean.length === 6) {
+    if (isCompleteHex(clean)) {
       onChange(clean.toUpperCase());
     }
   };
@@ -35,7 +40,7 @@ export function ColorPicker({ value, onChange }: ColorPickerProps) {
   };
 
   // Sincronizar input quando valor muda externamente
-  if (value !== hexInput && value.length === 6 && hexInput.length === 6 && value.toUpperCase() !== hexInput.toUpperCase()) {
+  if (shouldSyncFromProp(value, hexInput)) {
     setHexInput(value);
   }
 
