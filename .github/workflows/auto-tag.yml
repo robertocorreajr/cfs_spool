@@ -30,7 +30,7 @@ jobs:
     
     steps:
       - name: Checkout código
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0 # Necessário para obter todas as tags
           ref: main # Garantir que estamos na branch main
