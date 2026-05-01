@@ -165,51 +165,6 @@ func (f Fields) String() string {
 		f.Batch, f.Date, f.Supplier, f.Material, f.Color, f.Length, f.Serial, f.Reserve)
 }
 
-// FormatDate converte a data do formato MDDYY para formato legível
-// BB124 = B(mês base 36) + B(dia base 36) + 1(ano 1) + 24(ano 24) = ?
-func (f Fields) FormatDate() string {
-	if len(f.Date) != 5 {
-		return f.Date + " (formato inválido)"
-	}
-	
-	// Para BB124: preciso entender o formato
-	// B em base 36 = 11
-	// B em base 36 = 11  
-	// 124 poderia ser 1/24 (janeiro 2024) ou 12/4 (dezembro 2004)?
-	
-	// Vou assumir que BB representa mês e dia em base 36
-	// E 124 representa ano (2024)
-	month := string(f.Date[0])  // B
-	day := string(f.Date[1])    // B
-	year := f.Date[2:5]         // 124
-	
-	// Conversão base 36 para decimal
-	monthNames := map[string]string{
-		"1": "Janeiro", "2": "Fevereiro", "3": "Março", "4": "Abril",
-		"5": "Maio", "6": "Junho", "7": "Julho", "8": "Agosto",
-		"9": "Setembro", "A": "Outubro", "B": "Novembro", "C": "Dezembro",
-	}
-	
-	monthName := monthNames[month]
-	if monthName == "" {
-		monthName = "Mês " + month
-	}
-	
-	// B em base 36 = 11
-	dayNum := "11"
-	if day >= "0" && day <= "9" {
-		dayNum = day
-	} else if day >= "A" && day <= "Z" {
-		// Conversão base 36: A=10, B=11, C=12, etc.
-		dayNum = fmt.Sprintf("%d", int(day[0])-int('A')+10)
-	}
-	
-	// Interpretar ano 124 como 2024
-	yearFormatted := "20" + year[1:]
-	
-	return fmt.Sprintf("%s de %s de %s", dayNum, monthName, yearFormatted)
-}
-
 // FormatColor converte a cor para formato legível
 func (f Fields) FormatColor() string {
 	if len(f.Color) == 7 && f.Color[0] == '0' {

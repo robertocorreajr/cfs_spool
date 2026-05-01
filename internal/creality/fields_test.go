@@ -5,42 +5,6 @@ import (
 	"testing"
 )
 
-// TestFormatDate documenta o comportamento ATUAL de FormatDate.
-//
-// Atenção: a função tem um bug conhecido — extrai apenas 1 caractere do dia
-// (f.Date[1]), não 2. Isso faz com que datas como "10524" (esperado "5 de
-// Janeiro de 2024") sejam interpretadas como "0 de Janeiro de 2024".
-// Os testes abaixo refletem o comportamento atual; quando a função for
-// corrigida, atualizar os esperados aqui também.
-func TestFormatDate(t *testing.T) {
-	testes := []struct {
-		nome     string
-		date     string
-		esperado string
-	}{
-		{"mes 1 (Janeiro), 2o char dia=0", "10524", "0 de Janeiro de 2024"},
-		{"mes 9 (Setembro), 2o char dia=1", "91524", "1 de Setembro de 2024"},
-		{"mes A (Outubro), 2o char dia=2", "A2024", "2 de Outubro de 2024"},
-		{"mes B (Novembro), 2o char dia=B (=11)", "BB124", "11 de Novembro de 2024"},
-		{"mes C (Dezembro), 2o char dia=2", "C2524", "2 de Dezembro de 2024"},
-		{"mes desconhecido Z, 2o char dia=0", "Z0123", "0 de Mês Z de 2023"},
-		{"dia base 36 (Z=35), mes 1", "1Z124", "35 de Janeiro de 2024"},
-		{"date vazia", "", " (formato inválido)"},
-		{"date curta", "12", "12 (formato inválido)"},
-		{"date longa", "123456", "123456 (formato inválido)"},
-	}
-
-	for _, tt := range testes {
-		t.Run(tt.nome, func(t *testing.T) {
-			f := Fields{Date: tt.date}
-			resultado := f.FormatDate()
-			if resultado != tt.esperado {
-				t.Errorf("FormatDate(%q) = %q, esperado %q", tt.date, resultado, tt.esperado)
-			}
-		})
-	}
-}
-
 // TestFormatColor cobre cor válida (7 chars, começando com 0) e variações
 // que devem retornar a cor crua sem formatação hex.
 func TestFormatColor(t *testing.T) {
