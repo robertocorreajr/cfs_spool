@@ -23,9 +23,14 @@ const (
 )
 
 // Reader mantém conexão PC/SC aberta.
+//
+// O campo transmitFn é uma indireção sobre `card.Transmit` que existe
+// para permitir testes com APDUs simulados (ver reader_test.go). Em
+// produção, Open() o inicializa com a chamada real ao cartão PC/SC.
 type Reader struct {
-	ctx  *scard.Context
-	card *scard.Card
+	ctx        *scard.Context
+	card       *scard.Card
+	transmitFn func([]byte) ([]byte, error)
 }
 
 // Open conecta no 1º leitor encontrado (ACR122…).
@@ -42,7 +47,11 @@ func Open() (*Reader, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Reader{ctx: ctx, card: card}, nil
+	r := &Reader{ctx: ctx, card: card}
+	r.transmitFn = func(cmd []byte) ([]byte, error) {
+		return r.card.Transmit(cmd)
+	}
+	return r, nil
 }
 
 func (r *Reader) Close() {
@@ -355,7 +364,7 @@ func (r *Reader) ReadRange(start byte, count int, keyType byte, keyHex string) (
 }
 
 func (r *Reader) transmit(cmd []byte) ([]byte, error) {
-	return r.card.Transmit(cmd)
+	return r.transmitFn(cmd)
 }
 
 // ReadBlockDirect lê um bloco sem autenticação (útil para bloco 0)
