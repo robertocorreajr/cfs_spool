@@ -1,13 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
-// Mocks dos bindings — devem vir antes do import do componente.
 const mockCheckForUpdate = vi.fn();
 const mockIgnoreUpdateVersion = vi.fn();
 const mockOpenURL = vi.fn();
+const mockEventsEmit = vi.fn();
 
-// Subscribers do EventsOn — guardamos por nome de evento para podermos
-// disparar manualmente nos testes (simulando o startup do backend).
 type Subscriber = (...args: unknown[]) => void;
 const subscribers: Record<string, Subscriber[]> = {};
 
@@ -29,6 +27,7 @@ vi.mock("../../../wailsjs/runtime/runtime", () => ({
       }
     };
   },
+  EventsEmit: (...args: unknown[]) => mockEventsEmit(...args),
 }));
 
 const toastMessages: { kind: string; msg: string; opts?: any }[] = [];
@@ -64,27 +63,42 @@ beforeEach(() => {
   mockCheckForUpdate.mockReset();
   mockIgnoreUpdateVersion.mockReset();
   mockOpenURL.mockReset();
+  mockEventsEmit.mockReset();
 });
 
 describe("UpdateNotifier", () => {
-  it("não renderiza nada antes de receber um evento", () => {
-    const { container } = render(<UpdateNotifier />);
-    // Nenhum dialog aberto, nenhum toast disparado ainda.
+  it("não renderiza nada quando não há update detectado", () => {
+    mockCheckForUpdate.mockResolvedValue({
+      ...releaseFixture,
+      available: false,
+    });
+    const { container } = render(<UpdateNotifier autoCheckEvent={false} />);
     expect(container.firstChild).toBeNull();
     expect(toastMessages).toHaveLength(0);
   });
 
-  it("dispara toast quando recebe update:available do backend", () => {
+  it("não dispara toast automaticamente quando recebe update:available", async () => {
     render(<UpdateNotifier />);
 
-    // Simula o evento que o startup do backend emite.
     const cb = subscribers["update:available"]?.[0];
     expect(cb).toBeDefined();
     cb?.(releaseFixture);
 
-    expect(toastMessages).toHaveLength(1);
-    expect(toastMessages[0].msg).toContain("v3.1.0");
-    expect(toastMessages[0].opts.description).toContain("v3.0.0");
+    // Comportamento novo: nenhum toast nem modal abrem sozinhos —
+    // o usuário precisa clicar no ícone do Header (que dispara update:show).
+    expect(toastMessages).toHaveLength(0);
+    expect(screen.queryByText(/Auto-update/)).not.toBeInTheDocument();
+  });
+
+  it("abre o modal quando recebe update:show após update:available", async () => {
+    render(<UpdateNotifier />);
+
+    subscribers["update:available"]?.[0]?.(releaseFixture);
+    subscribers["update:show"]?.[0]?.();
+
+    await waitFor(() => {
+      expect(screen.getByText(/Auto-update/)).toBeInTheDocument();
+    });
   });
 
   it("triggerManualCheck mostra success quando não há update", async () => {
@@ -101,14 +115,14 @@ describe("UpdateNotifier", () => {
     ).toContain("mais recente");
   });
 
-  it("triggerManualCheck reusa o presenter do UpdateNotifier quando há update", async () => {
-    render(<UpdateNotifier />);
-
+  it("triggerManualCheck emite update:available e update:show quando há update", async () => {
     mockCheckForUpdate.mockResolvedValue(releaseFixture);
+
     await triggerManualCheck();
 
-    // Deve ter disparado o toast vindo do presenter (default kind).
-    expect(toastMessages.some((t) => t.kind === "default")).toBe(true);
+    const events = mockEventsEmit.mock.calls.map((c) => c[0]);
+    expect(events).toContain("update:available");
+    expect(events).toContain("update:show");
   });
 
   it("triggerManualCheck mostra error quando o backend falha", async () => {
@@ -121,31 +135,10 @@ describe("UpdateNotifier", () => {
     expect(err?.msg).toContain("rede caiu");
   });
 
-  it("clicar em 'Ver detalhes' abre o dialog com o changelog", async () => {
-    render(<UpdateNotifier />);
-
-    const cb = subscribers["update:available"]?.[0];
-    cb?.(releaseFixture);
-
-    // O toast tem uma `action` com onClick — exercitamos manualmente.
-    const action = toastMessages[0].opts.action;
-    expect(action.label).toBe("Ver detalhes");
-    action.onClick();
-
-    await waitFor(() => {
-      expect(screen.getByText(/Auto-update/)).toBeInTheDocument();
-    });
-    expect(
-      screen.getByRole("button", { name: /Abrir release/i }),
-    ).toBeInTheDocument();
-  });
-
   it("clicar em 'Abrir release no GitHub' chama OpenURL com a URL da release", async () => {
     render(<UpdateNotifier />);
-
-    const cb = subscribers["update:available"]?.[0];
-    cb?.(releaseFixture);
-    toastMessages[0].opts.action.onClick();
+    subscribers["update:available"]?.[0]?.(releaseFixture);
+    subscribers["update:show"]?.[0]?.();
 
     await waitFor(() => {
       expect(screen.getByText(/Auto-update/)).toBeInTheDocument();
@@ -155,19 +148,36 @@ describe("UpdateNotifier", () => {
     expect(mockOpenURL).toHaveBeenCalledWith(releaseFixture.url);
   });
 
-  it("clicar em 'Ignorar' chama IgnoreUpdateVersion com a tag certa", async () => {
+  it("clicar em 'Ignorar esta versão' chama IgnoreUpdateVersion + emite update:cleared", async () => {
     mockIgnoreUpdateVersion.mockResolvedValue(undefined);
     render(<UpdateNotifier />);
+    subscribers["update:available"]?.[0]?.(releaseFixture);
+    subscribers["update:show"]?.[0]?.();
 
-    const cb = subscribers["update:available"]?.[0];
-    cb?.(releaseFixture);
+    await waitFor(() => {
+      expect(screen.getByText(/Auto-update/)).toBeInTheDocument();
+    });
 
-    const cancelAction = toastMessages[0].opts.cancel;
-    expect(cancelAction.label).toBe("Ignorar");
-    cancelAction.onClick();
+    fireEvent.click(
+      screen.getByRole("button", { name: /Ignorar esta versão/i }),
+    );
 
     await waitFor(() => {
       expect(mockIgnoreUpdateVersion).toHaveBeenCalledWith("v3.1.0");
+    });
+    expect(mockEventsEmit).toHaveBeenCalledWith("update:cleared");
+  });
+
+  it("pull no mount emite update:available quando backend reporta versão nova", async () => {
+    mockCheckForUpdate.mockResolvedValue(releaseFixture);
+
+    render(<UpdateNotifier />);
+
+    await waitFor(() => {
+      expect(mockEventsEmit).toHaveBeenCalledWith(
+        "update:available",
+        expect.objectContaining({ version: "v3.1.0" }),
+      );
     });
   });
 });

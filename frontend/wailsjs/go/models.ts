@@ -83,7 +83,6 @@ export namespace main {
 	export class TagData {
 	    uid: string;
 	    date: string;
-	    dateDisplay: string;
 	    supplierCode: string;
 	    supplierName: string;
 	    materialCode: string;
@@ -102,7 +101,6 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.uid = source["uid"];
 	        this.date = source["date"];
-	        this.dateDisplay = source["dateDisplay"];
 	        this.supplierCode = source["supplierCode"];
 	        this.supplierName = source["supplierName"];
 	        this.materialCode = source["materialCode"];
@@ -114,7 +112,6 @@ export namespace main {
 	        this.isBlank = source["isBlank"];
 	    }
 	}
-	
 	export class UpdateInfo {
 	    available: boolean;
 	    ignored: boolean;
@@ -124,11 +121,11 @@ export namespace main {
 	    url: string;
 	    publishedAt: string;
 	    body: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new UpdateInfo(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.available = source["available"];
@@ -141,6 +138,7 @@ export namespace main {
 	        this.body = source["body"];
 	    }
 	}
+	
 	export class WriteRequest {
 	    date: string;
 	    supplier: string;

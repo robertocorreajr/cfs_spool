@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -42,59 +42,25 @@ interface UpdateNotifierProps {
   autoCheckEvent?: boolean;
 }
 
-// UpdateNotifier renderiza o modal de changelog e responde tanto ao evento
-// emitido pelo startup do backend quanto a triggerManualCheck (botão
-// "Verificar atualizações" no Header). O componente expõe seu callback de
-// "show" via window para que o fluxo manual reuse o mesmo dialog/toast.
+// UpdateNotifier mantém o estado da release detectada e renderiza o
+// modal de changelog. Não dispara toasts nem abre o modal automaticamente —
+// o fluxo é: backend detecta → emite "update:available" + Header pisca →
+// usuário clica no ícone → "update:show" abre o dialog.
 export function UpdateNotifier({ autoCheckEvent = true }: UpdateNotifierProps = {}) {
   const [info, setInfo] = useState<UpdateInfo | null>(null);
   const [showDialog, setShowDialog] = useState(false);
-  // lastShownRef dedupe versão já apresentada — protege contra o evento
-  // "update:available" do startup chegar logo depois do CheckForUpdate
-  // pull do mount (ou vice-versa) e disparar dois toasts iguais.
-  const lastShownRef = useRef<string>("");
 
-  const presentUpdate = (data: UpdateInfo) => {
-    if (lastShownRef.current === data.version) {
-      return;
-    }
-    lastShownRef.current = data.version;
-    setInfo(data);
-    toast(`Nova versão ${data.version} disponível`, {
-      description: `Você está na ${data.current || "dev"}.`,
-      duration: 15_000,
-      action: {
-        label: "Ver detalhes",
-        onClick: () => setShowDialog(true),
-      },
-      cancel: {
-        label: "Ignorar",
-        onClick: () => handleIgnore(data.version),
-      },
-    });
-  };
-
-  // Registra a função de "apresentar update" no objeto global para que
-  // triggerManualCheck (chamado de outros componentes, como o Header) possa
-  // reutilizá-la. Single-instance — o SpoolForm monta um único notifier.
-  useEffect(() => {
-    pendingPresenter = presentUpdate;
-    return () => {
-      pendingPresenter = null;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Verificação proativa: o backend dispara o evento "update:available"
-  // numa goroutine, mas pode chegar antes do listener estar pronto. Para
-  // evitar essa race, o componente também faz uma chamada ativa via
-  // CheckForUpdate no mount — assim o usuário SEMPRE vê o toast no startup
-  // se houver versão nova e não ignorada.
+  // Carrega a release mais nova (uma vez no mount). Reaproveita o evento
+  // "update:available" caso ele chegue depois (ex.: o usuário ficou offline
+  // no startup e a rede voltou — backend pode reemitir no futuro).
   useEffect(() => {
     if (!autoCheckEvent) return;
 
-    const off = EventsOn("update:available", (data: UpdateInfo) => {
-      presentUpdate(data);
+    const offAvail = EventsOn("update:available", (data: UpdateInfo) => {
+      setInfo(data);
+    });
+    const offShow = EventsOn("update:show", () => {
+      setShowDialog(true);
     });
 
     let cancelled = false;
@@ -103,7 +69,10 @@ export function UpdateNotifier({ autoCheckEvent = true }: UpdateNotifierProps = 
         const data = (await CheckForUpdate()) as UpdateInfo;
         if (cancelled) return;
         if (data.available && !data.ignored) {
-          presentUpdate(data);
+          setInfo(data);
+          // Avisa o Header para acender o ícone — útil quando o pull do
+          // frontend é mais rápido que o evento do backend.
+          EventsEmit("update:available", data);
         }
       } catch {
         // Silencioso: erro de rede / 404 / rate limit não trava o app.
@@ -112,9 +81,9 @@ export function UpdateNotifier({ autoCheckEvent = true }: UpdateNotifierProps = 
 
     return () => {
       cancelled = true;
-      off();
+      offAvail();
+      offShow();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoCheckEvent]);
 
   const handleIgnore = async (version: string) => {
@@ -122,7 +91,8 @@ export function UpdateNotifier({ autoCheckEvent = true }: UpdateNotifierProps = 
       await IgnoreUpdateVersion(version);
       toast.success(`Versão ${version} silenciada nesta instalação`);
       setShowDialog(false);
-      // Avisa outros componentes (Header) para apagar o badge de "novidade".
+      setInfo(null);
+      // Avisa o Header para apagar o ícone piscando.
       EventsEmit("update:cleared");
     } catch (err) {
       toast.error(`Erro ao silenciar versão: ${String(err)}`);
@@ -172,19 +142,12 @@ export function UpdateNotifier({ autoCheckEvent = true }: UpdateNotifierProps = 
   );
 }
 
-// pendingPresenter é o handler do UpdateNotifier mais recente montado.
-// Mantido em escopo de módulo (não em window) para preservar tipagem e
-// permitir testes via vi.mock — o componente registra/desregistra no mount.
-let pendingPresenter: ((info: UpdateInfo) => void) | null = null;
-
 /**
- * triggerManualCheck consulta o backend e exibe feedback ao usuário.
- *
- * - Se a versão atual já é a mais recente: toast.success "você está atualizado".
- * - Se há nova versão: delega ao UpdateNotifier (mesmo fluxo do startup).
- * - Em erro: toast.error com a mensagem.
- *
- * Pensado para ser chamado pelo botão "Verificar atualizações" no Header.
+ * triggerManualCheck é o fluxo do botão "Verificar atualizações" — mas como
+ * o ícone do Header agora só aparece quando há novidade, esta função
+ * abre o dialog se o estado já tem release carregada e roda um check
+ * fresco caso contrário. Mantida exportada para retrocompatibilidade
+ * com testes existentes.
  */
 export async function triggerManualCheck(): Promise<void> {
   try {
@@ -195,15 +158,8 @@ export async function triggerManualCheck(): Promise<void> {
       );
       return;
     }
-    if (pendingPresenter) {
-      pendingPresenter(info);
-    } else {
-      // Sem notifier montado: ainda assim damos um feedback útil.
-      toast(`Nova versão ${info.version} disponível`, {
-        description: info.url,
-        duration: 15_000,
-      });
-    }
+    EventsEmit("update:available", info);
+    EventsEmit("update:show");
   } catch (err) {
     toast.error(`Erro ao verificar atualizações: ${String(err)}`);
   }

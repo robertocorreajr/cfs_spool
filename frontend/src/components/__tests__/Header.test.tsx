@@ -1,23 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 
-// Mocks dos bindings — devem vir antes do import do componente. O Header
-// agora chama triggerManualCheck quando o usuário clica em "Verificar
-// atualizações"; isso depende dos bindings Wails que não existem em jsdom.
-vi.mock("../../../wailsjs/go/main/App", () => ({
-  CheckForUpdate: vi.fn(),
-  IgnoreUpdateVersion: vi.fn(),
-  OpenURL: vi.fn(),
-}));
+const mockEventsEmit = vi.fn();
+
+// Mocks dos bindings — devem vir antes do import do componente.
 vi.mock("../../../wailsjs/runtime/runtime", () => ({
   EventsOn: () => () => {},
-}));
-vi.mock("sonner", () => ({
-  toast: Object.assign(() => {}, {
-    success: () => {},
-    error: () => {},
-    info: () => {},
-  }),
+  EventsEmit: (...args: unknown[]) => mockEventsEmit(...args),
 }));
 
 import { Header } from "@/components/Header";
@@ -35,7 +24,6 @@ describe("Header", () => {
 
   it("não renderiza o badge de versão quando version é string vazia", () => {
     const { container } = render(<Header version="" uid="" />);
-    // Apenas dois badges existem no design (UID + versão); ambos sumem com props vazias.
     expect(container.querySelectorAll("[class*=Badge]").length).toBe(0);
   });
 
@@ -50,16 +38,28 @@ describe("Header", () => {
     expect(screen.queryByText(/UID/)).not.toBeInTheDocument();
   });
 
-  it("dispara onCheckForUpdate ao clicar no botão de atualizações", async () => {
-    const onCheck = vi.fn().mockResolvedValue(undefined);
-    render(<Header version="v3.0.0" uid="" onCheckForUpdate={onCheck} />);
+  it("não renderiza o ícone de atualização quando hasUpdate é false", () => {
+    render(<Header version="v3.0.0" uid="" hasUpdate={false} />);
+    expect(
+      screen.queryByRole("button", { name: /Atualização disponível/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renderiza ícone piscando quando hasUpdate é true", () => {
+    render(<Header version="v3.0.0" uid="" hasUpdate />);
+    expect(
+      screen.getByRole("button", { name: /Atualização disponível/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("clicar no ícone emite update:show para abrir o modal", () => {
+    mockEventsEmit.mockClear();
+    render(<Header version="v3.0.0" uid="" hasUpdate />);
 
     fireEvent.click(
-      screen.getByRole("button", { name: /Procurar atualizações/i }),
+      screen.getByRole("button", { name: /Atualização disponível/i }),
     );
 
-    await waitFor(() => {
-      expect(onCheck).toHaveBeenCalledTimes(1);
-    });
+    expect(mockEventsEmit).toHaveBeenCalledWith("update:show");
   });
 });
