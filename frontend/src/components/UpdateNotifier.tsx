@@ -30,6 +30,26 @@ export interface UpdateInfo {
   url: string;
   publishedAt: string;
   body: string;
+  /** runtime.GOOS local — frontend usa só pra rotular o botão de download. */
+  os: string;
+  /** Asset compatível com o SO local. Vazio se nenhum bater. */
+  downloadUrl: string;
+  /** Nome do arquivo a baixar (ex.: cfs-spool-darwin-universal.dmg). */
+  downloadName: string;
+}
+
+// labelForOS mapeia runtime.GOOS para texto legível no botão.
+function labelForOS(os: string): string {
+  switch (os) {
+    case "darwin":
+      return "macOS";
+    case "windows":
+      return "Windows";
+    case "linux":
+      return "Linux";
+    default:
+      return os || "seu sistema";
+  }
 }
 
 interface UpdateNotifierProps {
@@ -105,9 +125,17 @@ export function UpdateNotifier({ autoCheckEvent = true }: UpdateNotifierProps = 
     setShowDialog(false);
   };
 
+  const handleDownload = () => {
+    if (!info?.downloadUrl) return;
+    OpenURL(info.downloadUrl);
+    setShowDialog(false);
+  };
+
   if (!info) {
     return null;
   }
+
+  const hasDirectDownload = Boolean(info.downloadUrl);
 
   return (
     <Dialog open={showDialog} onOpenChange={setShowDialog}>
@@ -132,10 +160,16 @@ export function UpdateNotifier({ autoCheckEvent = true }: UpdateNotifierProps = 
             <X className="mr-2 h-4 w-4" />
             Ignorar esta versão
           </Button>
-          <Button onClick={handleOpenRelease}>
+          <Button variant="outline" onClick={handleOpenRelease}>
             <ExternalLink className="mr-2 h-4 w-4" />
-            Abrir release no GitHub
+            Ver no GitHub
           </Button>
+          {hasDirectDownload && (
+            <Button onClick={handleDownload}>
+              <Download className="mr-2 h-4 w-4" />
+              Baixar para {labelForOS(info.os)}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

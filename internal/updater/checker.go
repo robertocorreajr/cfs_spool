@@ -80,9 +80,23 @@ func (c *Checker) CheckLatestRelease(ctx context.Context) (*Release, error) {
 		HTMLURL     string `json:"html_url"`
 		PublishedAt string `json:"published_at"`
 		Body        string `json:"body"`
+		Assets      []struct {
+			Name               string `json:"name"`
+			BrowserDownloadURL string `json:"browser_download_url"`
+			Size               int64  `json:"size"`
+		} `json:"assets"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
 		return nil, fmt.Errorf("updater: decodificar JSON: %w", err)
+	}
+
+	assets := make([]ReleaseAsset, 0, len(raw.Assets))
+	for _, a := range raw.Assets {
+		assets = append(assets, ReleaseAsset{
+			Name: a.Name,
+			URL:  a.BrowserDownloadURL,
+			Size: a.Size,
+		})
 	}
 
 	return &Release{
@@ -91,7 +105,46 @@ func (c *Checker) CheckLatestRelease(ctx context.Context) (*Release, error) {
 		URL:         raw.HTMLURL,
 		PublishedAt: raw.PublishedAt,
 		Body:        raw.Body,
+		Assets:      assets,
 	}, nil
+}
+
+// PickAsset escolhe o asset que casa com o SO recebido.
+//
+// Convenção dos releases do CFS Spool (ver auto-tag.yml + build.yml):
+//   - darwin → contém "darwin" no nome (ex.: cfs-spool-darwin-universal.dmg)
+//   - windows → contém "windows" no nome (ex.: cfs-spool-windows-amd64.zip)
+//   - linux → contém "linux" no nome (ex.: cfs-spool-linux-amd64.zip)
+//
+// Devolve nil se não achar — caller decide cair pra release page no browser.
+func PickAsset(assets []ReleaseAsset, goos string) *ReleaseAsset {
+	keyword := goosKeyword(goos)
+	if keyword == "" {
+		return nil
+	}
+	lk := strings.ToLower(keyword)
+	for i, a := range assets {
+		if strings.Contains(strings.ToLower(a.Name), lk) {
+			return &assets[i]
+		}
+	}
+	return nil
+}
+
+// goosKeyword traduz o GOOS para o token usado nos nomes dos assets.
+// Mantemos uma função separada para facilitar adicionar aliases futuros
+// (ex.: "macos" virando sinônimo de "darwin").
+func goosKeyword(goos string) string {
+	switch strings.ToLower(goos) {
+	case "darwin":
+		return "darwin"
+	case "windows":
+		return "windows"
+	case "linux":
+		return "linux"
+	default:
+		return ""
+	}
 }
 
 // IsNewer compara duas versões usando semver e retorna true se latest > current.

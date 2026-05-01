@@ -55,6 +55,9 @@ const releaseFixture = {
   url: "https://example.com/r/v3.1.0",
   publishedAt: "2026-05-01T12:00:00Z",
   body: "## Novidades\n- Auto-update",
+  os: "darwin",
+  downloadUrl: "https://example.com/cfs-spool-darwin-universal.dmg",
+  downloadName: "cfs-spool-darwin-universal.dmg",
 };
 
 beforeEach(() => {
@@ -135,7 +138,7 @@ describe("UpdateNotifier", () => {
     expect(err?.msg).toContain("rede caiu");
   });
 
-  it("clicar em 'Abrir release no GitHub' chama OpenURL com a URL da release", async () => {
+  it("clicar em 'Ver no GitHub' chama OpenURL com a URL da release", async () => {
     render(<UpdateNotifier />);
     subscribers["update:available"]?.[0]?.(releaseFixture);
     subscribers["update:show"]?.[0]?.();
@@ -144,8 +147,38 @@ describe("UpdateNotifier", () => {
       expect(screen.getByText(/Auto-update/)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Abrir release/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Ver no GitHub/i }));
     expect(mockOpenURL).toHaveBeenCalledWith(releaseFixture.url);
+  });
+
+  it("botão 'Baixar para macOS' chama OpenURL com o asset do SO local", async () => {
+    render(<UpdateNotifier />);
+    subscribers["update:available"]?.[0]?.(releaseFixture);
+    subscribers["update:show"]?.[0]?.();
+
+    await waitFor(() => {
+      expect(screen.getByText(/Auto-update/)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Baixar para macOS/i }));
+    expect(mockOpenURL).toHaveBeenCalledWith(releaseFixture.downloadUrl);
+  });
+
+  it("não renderiza botão de download quando downloadUrl é vazio", async () => {
+    render(<UpdateNotifier />);
+    subscribers["update:available"]?.[0]?.({
+      ...releaseFixture,
+      downloadUrl: "",
+      downloadName: "",
+    });
+    subscribers["update:show"]?.[0]?.();
+
+    await waitFor(() => {
+      expect(screen.getByText(/Auto-update/)).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByRole("button", { name: /Baixar para/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("clicar em 'Ignorar esta versão' chama IgnoreUpdateVersion + emite update:cleared", async () => {

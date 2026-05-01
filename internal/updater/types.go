@@ -28,4 +28,18 @@ type Release struct {
 	PublishedAt string `json:"publishedAt"`
 	// Body contém o changelog em Markdown.
 	Body string `json:"body"`
+	// Assets é a lista de binários publicados na release (DMG, ZIP, etc.).
+	Assets []ReleaseAsset `json:"assets"`
+}
+
+// ReleaseAsset é cada arquivo anexado a uma release no GitHub —
+// tipicamente o instalador por SO (cfs-spool-darwin-universal.dmg,
+// cfs-spool-linux-amd64.zip, etc.).
+type ReleaseAsset struct {
+	// Name é o nome do arquivo (ex.: "cfs-spool-darwin-universal.dmg").
+	Name string `json:"name"`
+	// URL é o link direto para download via browser_download_url.
+	URL string `json:"url"`
+	// Size em bytes (informativo — mostrado no botão se relevante).
+	Size int64 `json:"size"`
 }

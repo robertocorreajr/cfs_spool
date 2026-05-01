@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -17,6 +18,10 @@ import (
 
 // updaterRepo é o repositório oficial consultado para verificar releases.
 const updaterRepo = "robertocorreajr/cfs_spool"
+
+// platformGOOS é uma indireção sobre runtime.GOOS para que testes possam
+// simular cada SO ao escolher o asset de download recomendado.
+var platformGOOS = runtime.GOOS
 
 // App estrutura principal da aplicação Wails
 type App struct {
@@ -205,6 +210,14 @@ type UpdateInfo struct {
 	URL         string `json:"url"`
 	PublishedAt string `json:"publishedAt"`
 	Body        string `json:"body"`
+	// OS é o runtime.GOOS local — frontend usa só pra rotular o botão.
+	OS string `json:"os"`
+	// DownloadURL aponta para o asset que casa com OS local. Vazio se
+	// nenhum asset bater (frontend cai em URL da release page).
+	DownloadURL string `json:"downloadUrl"`
+	// DownloadName é o nome do arquivo que será baixado (ex.:
+	// "cfs-spool-darwin-universal.dmg") — útil para mostrar no botão.
+	DownloadName string `json:"downloadName"`
 }
 
 // CheckForUpdate consulta o GitHub Releases e retorna UpdateInfo.
@@ -233,6 +246,11 @@ func (a *App) CheckForUpdate() (*UpdateInfo, error) {
 		PublishedAt: rel.PublishedAt,
 		Body:        rel.Body,
 		Available:   updater.IsNewer(rel.Version, version),
+		OS:          platformGOOS,
+	}
+	if asset := updater.PickAsset(rel.Assets, platformGOOS); asset != nil {
+		info.DownloadURL = asset.URL
+		info.DownloadName = asset.Name
 	}
 	if a.updateConfig != nil {
 		info.Ignored = a.updateConfig.IsIgnored(rel.Version)

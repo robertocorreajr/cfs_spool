@@ -42,6 +42,83 @@ func withUpdaterStub(t *testing.T, app *App, baseURL, configPath string) func() 
 	}
 }
 
+// TestCheckForUpdate_PopulaDownloadParaSO confirma que UpdateInfo carrega
+// DownloadURL/DownloadName escolhidos pelo SO atual via PickAsset.
+func TestCheckForUpdate_PopulaDownloadParaSO(t *testing.T) {
+	original := version
+	defer func() { version = original }()
+	version = "v3.0.0"
+
+	originalGOOS := platformGOOS
+	defer func() { platformGOOS = originalGOOS }()
+	platformGOOS = "darwin"
+
+	srv := stubReleasesServer(t, `{
+		"tag_name": "v3.1.0",
+		"html_url": "https://example.com/r/v3.1.0",
+		"published_at": "2026-05-01T12:00:00Z",
+		"body": "x",
+		"assets": [
+			{"name": "cfs-spool-darwin-universal.dmg", "browser_download_url": "https://example.com/dmg", "size": 1},
+			{"name": "cfs-spool-windows-amd64.zip", "browser_download_url": "https://example.com/win", "size": 1}
+		]
+	}`)
+	defer srv.Close()
+
+	app := NewApp()
+	app.ctx = context.Background()
+	restore := withUpdaterStub(t, app, srv.URL, filepath.Join(t.TempDir(), "cfg.json"))
+	defer restore()
+
+	info, err := app.CheckForUpdate()
+	if err != nil {
+		t.Fatalf("CheckForUpdate erro: %v", err)
+	}
+	if info.OS != "darwin" {
+		t.Errorf("OS = %q, esperado %q", info.OS, "darwin")
+	}
+	if info.DownloadURL != "https://example.com/dmg" {
+		t.Errorf("DownloadURL = %q, esperado URL do .dmg", info.DownloadURL)
+	}
+	if info.DownloadName != "cfs-spool-darwin-universal.dmg" {
+		t.Errorf("DownloadName = %q", info.DownloadName)
+	}
+}
+
+// TestCheckForUpdate_SemAssetParaSO garante que DownloadURL fica vazia
+// quando nenhum asset bate com o SO atual — frontend cai no botão "Abrir
+// release no GitHub" como fallback.
+func TestCheckForUpdate_SemAssetParaSO(t *testing.T) {
+	original := version
+	defer func() { version = original }()
+	version = "v3.0.0"
+
+	originalGOOS := platformGOOS
+	defer func() { platformGOOS = originalGOOS }()
+	platformGOOS = "freebsd" // não há asset .freebsd
+
+	srv := stubReleasesServer(t, `{
+		"tag_name": "v3.1.0",
+		"html_url": "https://example.com/r/v3.1.0",
+		"published_at": "2026-05-01T12:00:00Z",
+		"body": "x",
+		"assets": [
+			{"name": "cfs-spool-darwin-universal.dmg", "browser_download_url": "https://example.com/dmg", "size": 1}
+		]
+	}`)
+	defer srv.Close()
+
+	app := NewApp()
+	app.ctx = context.Background()
+	restore := withUpdaterStub(t, app, srv.URL, filepath.Join(t.TempDir(), "cfg.json"))
+	defer restore()
+
+	info, _ := app.CheckForUpdate()
+	if info.DownloadURL != "" {
+		t.Errorf("DownloadURL = %q, esperado vazio (sem asset freebsd)", info.DownloadURL)
+	}
+}
+
 // TestCheckForUpdate_NovaVersao simula uma release nova e verifica que
 // a binding devolve UpdateInfo.Available = true com URL e changelog.
 func TestCheckForUpdate_NovaVersao(t *testing.T) {

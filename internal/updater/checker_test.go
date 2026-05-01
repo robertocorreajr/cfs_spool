@@ -76,6 +76,83 @@ func TestCheckLatestRelease_Sucesso(t *testing.T) {
 	}
 }
 
+// TestCheckLatestRelease_ParseiaAssets confirma que o checker captura a
+// lista de binários publicados (DMG, ZIPs) — base do botão de download.
+func TestCheckLatestRelease_ParseiaAssets(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/repos/owner/repo/releases/latest", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{
+			"tag_name": "v3.1.0",
+			"html_url": "https://example.com/r/v3.1.0",
+			"published_at": "2026-05-01T12:00:00Z",
+			"body": "x",
+			"assets": [
+				{"name": "cfs-spool-darwin-universal.dmg", "browser_download_url": "https://example.com/dmg", "size": 12345},
+				{"name": "cfs-spool-windows-amd64.zip", "browser_download_url": "https://example.com/win", "size": 9999}
+			]
+		}`))
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	c := &Checker{Repo: "owner/repo", BaseURL: srv.URL}
+	rel, err := c.CheckLatestRelease(context.Background())
+	if err != nil {
+		t.Fatalf("CheckLatestRelease erro: %v", err)
+	}
+	if len(rel.Assets) != 2 {
+		t.Fatalf("Assets len = %d, esperado 2", len(rel.Assets))
+	}
+	if rel.Assets[0].Name != "cfs-spool-darwin-universal.dmg" {
+		t.Errorf("Assets[0].Name = %q", rel.Assets[0].Name)
+	}
+	if rel.Assets[0].URL != "https://example.com/dmg" {
+		t.Errorf("Assets[0].URL = %q", rel.Assets[0].URL)
+	}
+	if rel.Assets[1].Size != 9999 {
+		t.Errorf("Assets[1].Size = %d", rel.Assets[1].Size)
+	}
+}
+
+// TestPickAsset cobre a heurística de matching por SO usado pelo botão
+// de download — escolhe o asset cujo nome contém o token do GOOS.
+func TestPickAsset(t *testing.T) {
+	assets := []ReleaseAsset{
+		{Name: "cfs-spool-darwin-universal.dmg", URL: "u1"},
+		{Name: "cfs-spool-linux-amd64.zip", URL: "u2"},
+		{Name: "cfs-spool-windows-amd64.zip", URL: "u3"},
+	}
+
+	testes := []struct {
+		goos     string
+		esperado string
+	}{
+		{"darwin", "u1"},
+		{"linux", "u2"},
+		{"windows", "u3"},
+		{"freebsd", ""}, // não suportado: nil
+		{"", ""},
+	}
+
+	for _, tt := range testes {
+		t.Run(tt.goos, func(t *testing.T) {
+			a := PickAsset(assets, tt.goos)
+			if tt.esperado == "" {
+				if a != nil {
+					t.Errorf("PickAsset(%q) = %+v, esperado nil", tt.goos, a)
+				}
+				return
+			}
+			if a == nil {
+				t.Fatalf("PickAsset(%q) = nil, esperado URL %q", tt.goos, tt.esperado)
+			}
+			if a.URL != tt.esperado {
+				t.Errorf("PickAsset(%q).URL = %q, esperado %q", tt.goos, a.URL, tt.esperado)
+			}
+		})
+	}
+}
+
 // TestCheckLatestRelease_404 deve retornar erro silenciosamente, não panic.
 func TestCheckLatestRelease_404(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -63,16 +63,12 @@ export function Header({ version, uid, hasUpdate }: HeaderProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="relative h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 animate-pulse"
+            className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 animate-pulse"
             aria-label="Atualização disponível — clique para ver"
             title="Atualização disponível"
             onClick={handleClick}
           >
             <Sparkles className="h-4 w-4" />
-            <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
-            </span>
           </Button>
         )}
       </div>

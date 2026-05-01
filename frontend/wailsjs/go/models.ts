@@ -121,6 +121,9 @@ export namespace main {
 	    url: string;
 	    publishedAt: string;
 	    body: string;
+	    os: string;
+	    downloadUrl: string;
+	    downloadName: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new UpdateInfo(source);
@@ -136,6 +139,9 @@ export namespace main {
 	        this.url = source["url"];
 	        this.publishedAt = source["publishedAt"];
 	        this.body = source["body"];
+	        this.os = source["os"];
+	        this.downloadUrl = source["downloadUrl"];
+	        this.downloadName = source["downloadName"];
 	    }
 	}
 	
