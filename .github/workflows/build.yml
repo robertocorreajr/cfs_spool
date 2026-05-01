@@ -281,38 +281,72 @@ jobs:
         done
         ls -la release-files/
 
+    # Extrai a seção da versão atual do CHANGELOG.md (formato Keep a
+    # Changelog) para usar como corpo da release. Se não houver entrada,
+    # falha o passo — segundo a regra do projeto, toda release deve ter
+    # uma entrada no CHANGELOG.md previamente preenchida.
+    - name: Extract changelog section
+      id: changelog
+      shell: bash
+      run: |
+        TAG="${{ steps.tag.outputs.name }}"
+        VERSION="${TAG#v}"
+        SECTION=$(awk -v ver="$VERSION" '
+          $0 ~ "^## \\["ver"\\]" { capture=1; next }
+          capture && /^## \[/ { exit }
+          capture { print }
+        ' CHANGELOG.md)
+
+        if [ -z "$(echo "$SECTION" | tr -d '[:space:]')" ]; then
+          echo "::error::No CHANGELOG.md entry found for version $VERSION. Add it under '## [$VERSION] - YYYY-MM-DD' before tagging."
+          exit 1
+        fi
+
+        {
+          echo "section<<CHANGELOG_EOF"
+          echo "$SECTION"
+          echo "CHANGELOG_EOF"
+        } >> "$GITHUB_OUTPUT"
+
     - name: Create Release
       uses: softprops/action-gh-release@v3
       with:
         tag_name: ${{ steps.tag.outputs.name }}
         draft: false
         prerelease: false
-        generate_release_notes: true
+        # generate_release_notes: false porque o corpo é montado a partir
+        # do CHANGELOG.md curado, seguindo .github/RELEASE_TEMPLATE.md.
+        generate_release_notes: false
         body: |
           ## CFS Spool ${{ steps.tag.outputs.name }}
 
           Native desktop application for reading and writing Creality CFS RFID tags.
           Built with Wails v2 + React + shadcn/ui.
 
-          ### Downloads
+          ## Downloads
 
           | Platform | File |
           |----------|------|
-          | macOS (Universal — Apple Silicon + Intel) | `cfs-spool-darwin-universal.dmg` |
-          | Linux (x86_64) | `cfs-spool-linux-amd64.zip` |
-          | Windows (x86_64) | `cfs-spool-windows-amd64.zip` |
+          | macOS Universal — Apple Silicon + Intel | `cfs-spool-darwin-universal.dmg` |
+          | Linux x86_64 | `cfs-spool-linux-amd64.zip` |
+          | Windows x86_64 | `cfs-spool-windows-amd64.zip` |
 
-          ### Quick Start
+          ## Installation
 
-          - **macOS**: Abra o DMG e arraste para Applications. App assinado e notarizado pela Apple — abre sem avisos.
-          - **Linux/Windows**: Extraia o ZIP e execute o binário `cfs-spool`
-          - Conecte o leitor ACR122U RFID
+          ### macOS
+          Open the DMG and drag CFS Spool to **Applications**. The app is signed and notarized by Apple, so it opens without warnings.
 
-          ### Prerequisites
+          ### Linux / Windows
+          Extract the ZIP file and run the `cfs-spool` binary.
 
-          - **RFID Reader**: ACR122U or compatible
+          ## Requirements
+
+          - **RFID Reader**: ACR122U or any compatible PC/SC reader.
           - **Linux**: `sudo apt install pcscd libpcsclite1`
-          - **macOS / Windows**: PC/SC is built-in
+          - **macOS / Windows**: PC/SC support is built in.
+
+          ## What's Changed
+          ${{ steps.changelog.outputs.section }}
         files: |
           release-files/*
       env:

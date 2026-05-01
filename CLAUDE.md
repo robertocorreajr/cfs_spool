@@ -126,6 +126,23 @@ Versioning is automatic via `.github/workflows/auto-tag.yml`:
 - Merging to `main` triggers auto-tag → triggers build workflow
 - Build workflow uses `wails build` for each platform
 
+### Release notes (mandatory format)
+
+Every release must follow the project's release-notes standard:
+
+- **Source of truth**: `CHANGELOG.md` ([Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format).
+- **GitHub Release body**: rendered by `.github/workflows/build.yml` using
+  `.github/RELEASE_TEMPLATE.md` (static blocks) + extracted section from
+  `CHANGELOG.md`.
+- **Hard requirement**: the build workflow fails if there is no entry
+  for the released version in `CHANGELOG.md`.
+- **Detailed rule for Claude Code**: `.claude/rules/release.md`.
+
+Before tagging or merging a release-bumping PR, always update the
+`## [Unreleased]` block in `CHANGELOG.md` to `## [X.Y.Z] - YYYY-MM-DD`
+and write user-facing prose grouped by Keep a Changelog categories —
+never paste raw commit messages.
+
 ## Pre-Push Validation
 
 Antes de qualquer `git push`, **sempre** executar:
