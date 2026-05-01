@@ -21,6 +21,10 @@ on:
 jobs:
   auto-tag:
     runs-on: ubuntu-latest
+    # Pula a criação de tag quando o commit pede [skip release].
+    # Para pular CI inteiro (incluindo o Tests), use [skip ci] — o GitHub
+    # Actions trata essa marca antes de qualquer workflow rodar.
+    if: ${{ github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, '[skip release]') }}
     permissions:
       contents: write
     
@@ -36,30 +40,9 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
 
-      - name: Instalar dependências de sistema (PC/SC)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libpcsclite-dev
-
-      - name: Configurar Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.24'
-
-      - name: Configurar Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Instalar dependências do frontend
-        run: cd frontend && npm ci
-
-      - name: Rodar testes (Go + frontend)
-        run: |
-          make test
-          make test-frontend
+      # Os testes (Go + frontend) rodam no workflow Tests (.github/workflows/tests.yml)
+      # em todos os pushes — independente de [skip ci]/[skip release]. Aqui só geramos
+      # tag, confiando que o Tests já validou.
 
       - name: Determinar incremento de versão
         id: increment_type
