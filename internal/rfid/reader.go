@@ -13,7 +13,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ebfe/scard"
 	"github.com/robertocorreajr/cfs_spool/internal/creality"
 )
 
@@ -24,27 +23,32 @@ const (
 
 // Reader mantém conexão PC/SC aberta.
 //
-// O campo transmitFn é uma indireção sobre `card.Transmit` que existe
-// para permitir testes com APDUs simulados (ver reader_test.go). Em
-// produção, Open() o inicializa com a chamada real ao cartão PC/SC.
+// Os campos ctx/card são interfaces (pcscContext/pcscCard) — em produção
+// são wrappers sobre scard.Context/Card; em testes são fakes. transmitFn
+// é uma indireção sobre card.Transmit (mantida por compatibilidade com
+// os testes que injetam APDUs sem precisar de um pcscCard completo).
 type Reader struct {
-	ctx        *scard.Context
-	card       *scard.Card
+	ctx        pcscContext
+	card       pcscCard
 	transmitFn func([]byte) ([]byte, error)
 }
 
-// Open conecta no 1º leitor encontrado (ACR122…).
+// Open conecta no 1º leitor encontrado (ACR122…). Usa
+// defaultPCSCFactory — em testes, sobrescreva essa variável de pacote
+// para injetar um pcscContext fake.
 func Open() (*Reader, error) {
-	ctx, err := scard.EstablishContext()
+	ctx, err := defaultPCSCFactory()
 	if err != nil {
 		return nil, err
 	}
 	readers, err := ctx.ListReaders()
 	if err != nil || len(readers) == 0 {
+		_ = ctx.Release()
 		return nil, errors.New("nenhum leitor PC/SC")
 	}
-	card, err := ctx.Connect(readers[0], scard.ShareShared, scard.ProtocolAny)
+	card, err := ctx.Connect(readers[0])
 	if err != nil {
+		_ = ctx.Release()
 		return nil, err
 	}
 	r := &Reader{ctx: ctx, card: card}
@@ -56,10 +60,10 @@ func Open() (*Reader, error) {
 
 func (r *Reader) Close() {
 	if r.card != nil {
-		r.card.Disconnect(scard.LeaveCard)
+		_ = r.card.Disconnect()
 	}
 	if r.ctx != nil {
-		r.ctx.Release()
+		_ = r.ctx.Release()
 	}
 }
 
