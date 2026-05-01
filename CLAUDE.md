@@ -152,9 +152,10 @@ policy. Tags, release entries, and release notes are **never** deleted.
   latest 5 stable releases plus the milestone allowlist (currently
   `v1.0.0`, `v2.1.0`, `v3.0.0`).
 - **Cleanup workflow**: `.github/workflows/release-retention.yml` —
-  manual trigger only (`workflow_dispatch`); always run with
-  `dry_run=true` first, then re-run with `dry_run=false` and
-  `confirm=apply` to actually delete.
+  runs automatically after every `release:published` event (so the
+  Releases page stays in compliance without manual toil) and also
+  supports `workflow_dispatch` for ad-hoc audits with a `dry_run=true`
+  default.
 - **Adding a milestone**: edit both the table in `RELEASE_RETENTION.md`
   and the `MILESTONES` env var in the workflow in the same PR that cuts
   the milestone release.

@@ -106,35 +106,39 @@ link resolves correctly from any release page on GitHub.
 
 ## Cleanup process
 
-### One-shot vs. automation
+### Automatic on every new release
 
-We run cleanup **on demand only**, via a manually triggered workflow. No
-recurring cron is enabled by default, for three reasons:
+Cleanup runs automatically on every `release:published` event. Each new
+release that the Build & Release workflow publishes immediately triggers
+the retention workflow in `apply` mode, which retires assets from any
+release that falls outside the protection rules above.
 
-1. The release cadence is irregular — a fixed monthly cron might delete
-   assets from a release that is actively being investigated.
-2. The first run will retire ~25 releases worth of assets, which is a
-   noticeable change to the Releases page and deserves explicit human
-   approval.
-3. Manual triggers are easier to audit (the workflow run logs the exact
-   plan it executed).
+This is the right default because:
 
-The workflow can be wired to a cron in the future (see "Future work"
-below) once we have confidence in the dry-run output across several
-manual runs.
+1. The trigger is the act of publishing a new version — a deliberate,
+   audited event — not an arbitrary clock tick.
+2. The protection rules already prevent the latest stable, the recent
+   stable window, and milestones from ever being touched, so an
+   automatic run cannot retire something that should still be available.
+3. There is no manual toil: the Releases page stays in compliance with
+   the policy without anyone remembering to run anything.
 
-### Workflow
+### Manual override
 
-The cleanup is implemented in
-[`.github/workflows/release-retention.yml`](workflows/release-retention.yml).
-It is triggered with `workflow_dispatch` and accepts:
+The same workflow also accepts `workflow_dispatch` for ad-hoc runs (e.g.
+auditing the plan, retroactive cleanup, testing changes to the policy):
 
 - `dry_run` (default `true`) — when `true`, prints the plan without
-  modifying anything. Always run in dry-run first.
+  modifying anything.
 - `confirm` — must be set to the literal string `apply` to actually
-  delete assets. Any other value (including empty) forces dry-run.
+  delete assets when `dry_run=false`.
 
-The workflow:
+When triggered by `release:published`, those inputs are ignored and the
+workflow always runs in `apply` mode.
+
+### Workflow behavior
+
+The workflow ([`.github/workflows/release-retention.yml`](workflows/release-retention.yml)):
 
 1. Lists every release via `gh release list --limit 200`.
 2. Classifies each release as `stable`, `pre-release`, or `milestone`.
@@ -145,6 +149,14 @@ The workflow:
    `gh release delete-asset`, and appends the standard retired-assets
    note to the release body if not already present.
 6. Never invokes `gh release delete` or `git tag -d`.
+
+### First run
+
+The very first run after merging this policy will retire roughly 25
+releases worth of binaries. That is the intended one-time correction to
+align history with the policy. If you want to audit the plan before that
+happens, run the workflow once via `workflow_dispatch` with
+`dry_run=true` **before merging** (or before the next release publishes).
 
 ### Manual restoration
 
@@ -162,9 +174,6 @@ recoverable from source.
 
 ## Future work
 
-- Enable a monthly `schedule:` trigger on the workflow once dry-run
-  output has been reviewed several times and the milestone allowlist is
-  considered stable.
 - Generate a small badge / status comment on releases whose assets were
   retired (current implementation appends the standard note and stops
   there).

@@ -1,14 +1,22 @@
 name: Release Asset Retention
 
 # Aplica .github/RELEASE_RETENTION.md: retira binários de releases antigas
-# preservando tags, entradas de release e notas. Disparo manual apenas;
-# o cron é desligado intencionalmente (ver "Future work" no policy doc).
+# preservando tags, entradas de release e notas.
+#
+# Triggers:
+#   - release:published — roda automaticamente após cada nova release que
+#     o workflow Build & Release publica, mantendo a Releases page sempre
+#     conforme à política sem intervenção manual.
+#   - workflow_dispatch — disparo manual com opção de dry-run para
+#     auditoria pontual ou primeira execução supervisionada.
 
 on:
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       dry_run:
-        description: 'Dry run (true = só imprime plano). Para executar, defina como false E confirm=apply.'
+        description: 'Dry run (true = só imprime plano). Para executar manualmente, defina como false E confirm=apply.'
         type: boolean
         default: true
       confirm:
@@ -36,13 +44,19 @@ jobs:
         id: mode
         shell: bash
         run: |
-          if [ "${{ inputs.dry_run }}" = "false" ] && [ "${{ inputs.confirm }}" = "apply" ]; then
+          # Em release:published roda direto em apply (motivo: o gatilho já
+          # implica decisão consciente de publicar uma nova versão; rodar em
+          # dry-run aqui significaria toil manual permanente).
+          # Em workflow_dispatch respeita as flags dry_run/confirm.
+          if [ "${{ github.event_name }}" = "release" ]; then
+            MODE=apply
+          elif [ "${{ inputs.dry_run }}" = "false" ] && [ "${{ inputs.confirm }}" = "apply" ]; then
             MODE=apply
           else
             MODE=dry-run
           fi
           echo "mode=$MODE" >> "$GITHUB_OUTPUT"
-          echo "::notice::Effective mode: $MODE"
+          echo "::notice::Effective mode: $MODE (event: ${{ github.event_name }})"
 
       - name: Apply retention policy
         shell: bash
