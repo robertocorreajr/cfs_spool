@@ -1,0 +1,182 @@
+name: Release Asset Retention
+
+# Aplica .github/RELEASE_RETENTION.md: retira binários de releases antigas
+# preservando tags, entradas de release e notas.
+#
+# Triggers:
+#   - release:published — roda automaticamente após cada nova release que
+#     o workflow Build & Release publica, mantendo a Releases page sempre
+#     conforme à política sem intervenção manual.
+#   - workflow_dispatch — disparo manual com opção de dry-run para
+#     auditoria pontual ou primeira execução supervisionada.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (true = só imprime plano). Para executar manualmente, defina como false E confirm=apply.'
+        type: boolean
+        default: true
+      confirm:
+        description: 'Digite literalmente "apply" para realmente apagar assets quando dry_run=false.'
+        type: string
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  retain:
+    runs-on: ubuntu-latest
+    env:
+      # Janela de releases estáveis preservadas (incluindo a latest).
+      KEEP_RECENT: '5'
+      # Lista de marcos protegidos — manter sincronizado com .github/RELEASE_RETENTION.md.
+      MILESTONES: 'v1.0.0 v2.1.0 v3.0.0'
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Resolve effective mode
+        id: mode
+        shell: bash
+        run: |
+          # Em release:published roda direto em apply (motivo: o gatilho já
+          # implica decisão consciente de publicar uma nova versão; rodar em
+          # dry-run aqui significaria toil manual permanente).
+          # Em workflow_dispatch respeita as flags dry_run/confirm.
+          if [ "${{ github.event_name }}" = "release" ]; then
+            MODE=apply
+          elif [ "${{ inputs.dry_run }}" = "false" ] && [ "${{ inputs.confirm }}" = "apply" ]; then
+            MODE=apply
+          else
+            MODE=dry-run
+          fi
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+          echo "::notice::Effective mode: $MODE (event: ${{ github.event_name }})"
+
+      - name: Apply retention policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          MODE='${{ steps.mode.outputs.mode }}'
+
+          # 1. Fetch every release (drafts incluídos só para descartar adiante).
+          gh release list --limit 200 \
+            --json tagName,createdAt,isDraft > releases.json
+
+          # 2. Tags ativas (não-draft) ordenadas.
+          jq -r '.[] | select(.isDraft == false) | .tagName' releases.json \
+            | sort -u > all_tags.txt
+
+          # 3. Top-N estáveis mais recentes (tag exatamente vX.Y.Z).
+          jq -r --argjson n "$KEEP_RECENT" '
+            [.[] | select(.isDraft == false)
+                  | select(.tagName | test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))]
+            | sort_by(.createdAt) | reverse | .[0:$n] | .[].tagName
+          ' releases.json | sort -u > recent_stable.txt
+
+          # 4. Allowlist de marcos.
+          tr ' ' '\n' <<< "$MILESTONES" | sort -u > milestones.txt
+
+          # 5. Protegidas = top-N estáveis ∪ marcos.
+          sort -u recent_stable.txt milestones.txt > protected.txt
+
+          # 6. Alvos = todas − protegidas.
+          comm -23 all_tags.txt protected.txt > targets.txt
+
+          PROTECTED_COUNT=$(wc -l < protected.txt | tr -d ' ')
+          TARGET_COUNT=$(wc -l < targets.txt | tr -d ' ')
+
+          {
+            echo "## Retention plan"
+            echo ""
+            echo "**Mode:** \`$MODE\`"
+            echo ""
+            echo "**Protected (${PROTECTED_COUNT} releases):**"
+            echo ""
+            sed 's/^/- /' protected.txt
+            echo ""
+            echo "**Candidates for asset retirement (${TARGET_COUNT} releases):**"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$TARGET_COUNT" -eq 0 ]; then
+            echo "_(nenhuma)_" >> "$GITHUB_STEP_SUMMARY"
+            echo "Nada a fazer."
+            exit 0
+          fi
+
+          # Itera cada release-alvo, retira assets e anexa a nota padrão.
+          while IFS= read -r tag; do
+            [ -z "$tag" ] && continue
+            echo "::group::$tag"
+
+            ASSETS=$(gh release view "$tag" --json assets --jq '.assets[].name' || true)
+            if [ -z "$ASSETS" ]; then
+              ASSET_COUNT=0
+            else
+              ASSET_COUNT=$(printf '%s\n' "$ASSETS" | wc -l | tr -d ' ')
+            fi
+
+            if [ "$ASSET_COUNT" -eq 0 ]; then
+              echo "  Sem assets, ignorando."
+              echo "- \`$tag\` — sem assets, ignorada" >> "$GITHUB_STEP_SUMMARY"
+              echo "::endgroup::"
+              continue
+            fi
+
+            echo "  Encontrados ${ASSET_COUNT} asset(s)."
+            echo "- \`$tag\` — ${ASSET_COUNT} asset(s)" >> "$GITHUB_STEP_SUMMARY"
+
+            while IFS= read -r asset; do
+              [ -z "$asset" ] && continue
+              if [ "$MODE" = "apply" ]; then
+                echo "  Apagando asset: $asset"
+                gh release delete-asset "$tag" "$asset" --yes
+              else
+                echo "  [dry-run] Apagaria asset: $asset"
+              fi
+            done <<< "$ASSETS"
+
+            # Anexa a nota padrão se ainda não estiver presente.
+            BODY=$(gh release view "$tag" --json body --jq '.body')
+            if printf '%s' "$BODY" | grep -q '## Downloads retired'; then
+              echo "  Nota padrão já presente."
+            else
+              REPO='${{ github.repository }}'
+              # Monta a nota linha-a-linha para evitar heredocs (que conflitam
+              # com a indentação do block scalar do YAML).
+              NOTE=$(printf '%s\n' \
+                '' \
+                '---' \
+                '' \
+                '## Downloads retired' \
+                '' \
+                'The binaries originally attached to this release were removed as part of' \
+                "the project's [asset retention policy](../../blob/main/.github/RELEASE_RETENTION.md)." \
+                'Please download the latest release at' \
+                "https://github.com/${REPO}/releases/latest. The tag for this version is" \
+                'still available if you need to rebuild from source:' \
+                '' \
+                '```bash' \
+                "git checkout ${tag}" \
+                'wails build' \
+                '```')
+              if [ "$MODE" = "apply" ]; then
+                echo "  Anexando nota padrão de downloads aposentados."
+                printf '%s\n%s\n' "$BODY" "$NOTE" > /tmp/body.md
+                gh release edit "$tag" --notes-file /tmp/body.md
+              else
+                echo "  [dry-run] Anexaria nota padrão de downloads aposentados."
+              fi
+            fi
+
+            echo "::endgroup::"
+          done < targets.txt
+
+          echo ""
+          echo "Concluído. Modo: $MODE."

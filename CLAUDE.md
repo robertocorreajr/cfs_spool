@@ -143,6 +143,23 @@ Before tagging or merging a release-bumping PR, always update the
 and write user-facing prose grouped by Keep a Changelog categories —
 never paste raw commit messages.
 
+### Release asset retention
+
+The binaries attached to old releases are pruned according to a documented
+policy. Tags, release entries, and release notes are **never** deleted.
+
+- **Policy**: `.github/RELEASE_RETENTION.md` — keeps assets for the
+  latest 5 stable releases plus the milestone allowlist (currently
+  `v1.0.0`, `v2.1.0`, `v3.0.0`).
+- **Cleanup workflow**: `.github/workflows/release-retention.yml` —
+  runs automatically after every `release:published` event (so the
+  Releases page stays in compliance without manual toil) and also
+  supports `workflow_dispatch` for ad-hoc audits with a `dry_run=true`
+  default.
+- **Adding a milestone**: edit both the table in `RELEASE_RETENTION.md`
+  and the `MILESTONES` env var in the workflow in the same PR that cuts
+  the milestone release.
+
 ## Pre-Push Validation
 
 Antes de qualquer `git push`, **sempre** executar:
