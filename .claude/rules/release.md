@@ -72,8 +72,9 @@ documented policy. **Tags and release notes are never deleted** — only
 the attached download artifacts may be retired.
 
 - **Policy**: [`.github/RELEASE_RETENTION.md`](../../.github/RELEASE_RETENTION.md).
-- **Cleanup workflow**: `.github/workflows/release-retention.yml` (manual
-  trigger; always start with `dry_run=true`).
+- **Cleanup workflow**: `.github/workflows/release-retention.yml` runs
+  automatically on every `release:published` event in `apply` mode. Also
+  supports `workflow_dispatch` for ad-hoc audits (default `dry_run=true`).
 - When cutting a milestone release that should keep its assets forever,
   add the tag to **both** the milestone table in `RELEASE_RETENTION.md`
   **and** the `MILESTONES` env var in the workflow, in the same PR.
