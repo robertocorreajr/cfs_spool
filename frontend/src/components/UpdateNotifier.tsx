@@ -151,7 +151,7 @@ export function UpdateNotifier({ autoCheckEvent = true }: UpdateNotifierProps = 
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto rounded-md border bg-muted/30 p-4 text-sm font-mono whitespace-pre-wrap">
+        <div className="flex-1 overflow-y-auto rounded-md border bg-muted/30 p-3 text-[11px] leading-snug font-mono whitespace-pre-wrap">
           {info.body || "(sem changelog publicado)"}
         </div>
 
