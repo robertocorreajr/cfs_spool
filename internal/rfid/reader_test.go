@@ -293,7 +293,78 @@ func TestDeriveKeyFromUID_FallbackEmErro(t *testing.T) {
 	}
 }
 
-// Nota: Open() abre contexto PC/SC real e não é testável sem hardware
-// (ou sem refatoração mais agressiva expondo um factory de scard.Context).
-// Os testes acima cobrem a lógica APDU de todos os métodos públicos do
-// Reader; cobrir Open()/Close() ficará para uma futura abstração.
+// TestReadRange_Sucesso cobre leitura sequencial de N blocos: cada
+// iteração consome 1 auth + 1 read.
+func TestReadRange_Sucesso(t *testing.T) {
+	bloco4 := bytes.Repeat([]byte{0x11}, 16)
+	bloco5 := bytes.Repeat([]byte{0x22}, 16)
+	fake := &fakeAPDU{queue: []apduStep{
+		{want: []byte{0xFF, 0x86}, resp: statusOK()},                                     // auth bloco 4
+		{want: []byte{0xFF, 0xB0, 0x00, 0x04, 0x10}, resp: append(bloco4, statusOK()...)}, // read bloco 4
+		{want: []byte{0xFF, 0x86}, resp: statusOK()},                                     // auth bloco 5
+		{want: []byte{0xFF, 0xB0, 0x00, 0x05, 0x10}, resp: append(bloco5, statusOK()...)}, // read bloco 5
+	}}
+	r := newReaderForTest(fake)
+
+	got, err := r.ReadRange(4, 2, KeyTypeA, "FFFFFFFFFFFF")
+	if err != nil {
+		t.Fatalf("ReadRange erro: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("ReadRange devolveu %d blocos, esperado 2", len(got))
+	}
+	if got[0] != strings.ToUpper(hex.EncodeToString(bloco4)) {
+		t.Errorf("bloco 4 = %q, esperado %q", got[0], strings.ToUpper(hex.EncodeToString(bloco4)))
+	}
+	if got[1] != strings.ToUpper(hex.EncodeToString(bloco5)) {
+		t.Errorf("bloco 5 = %q, esperado %q", got[1], strings.ToUpper(hex.EncodeToString(bloco5)))
+	}
+}
+
+// TestReadRange_AbortaNaPrimeiraFalha verifica que erro na auth do
+// segundo bloco interrompe o loop e a resposta é nil.
+func TestReadRange_AbortaNaPrimeiraFalha(t *testing.T) {
+	bloco4 := bytes.Repeat([]byte{0x11}, 16)
+	fake := &fakeAPDU{queue: []apduStep{
+		{want: []byte{0xFF, 0x86}, resp: statusOK()},                                     // auth bloco 4 ok
+		{want: []byte{0xFF, 0xB0, 0x00, 0x04, 0x10}, resp: append(bloco4, statusOK()...)}, // read bloco 4 ok
+		{want: []byte{0xFF, 0x86}, resp: statusErr()},                                    // auth bloco 5 falha
+	}}
+	r := newReaderForTest(fake)
+
+	_, err := r.ReadRange(4, 2, KeyTypeA, "FFFFFFFFFFFF")
+	if err == nil {
+		t.Fatal("ReadRange deveria falhar no segundo bloco")
+	}
+}
+
+// TestWriteRange_Sucesso cobre escrita sequencial de N blocos com
+// WriteBlock simples. WriteRange só cai no método alternativo se o
+// principal falha — esse caminho fica em outro teste.
+func TestWriteRange_Sucesso(t *testing.T) {
+	fake := &fakeAPDU{queue: []apduStep{
+		{want: []byte{0xFF, 0x86}, resp: statusOK()},                  // auth bloco 4
+		{want: []byte{0xFF, 0xD6, 0x00, 0x04, 0x10}, resp: statusOK()}, // write bloco 4
+		{want: []byte{0xFF, 0x86}, resp: statusOK()},                  // auth bloco 5
+		{want: []byte{0xFF, 0xD6, 0x00, 0x05, 0x10}, resp: statusOK()}, // write bloco 5
+	}}
+	r := newReaderForTest(fake)
+
+	dados := []string{strings.Repeat("AA", 16), strings.Repeat("BB", 16)}
+	if err := r.WriteRange(4, dados, KeyTypeA, "FFFFFFFFFFFF"); err != nil {
+		t.Fatalf("WriteRange erro: %v", err)
+	}
+	if len(fake.calls) != 4 {
+		t.Errorf("esperado 4 chamadas APDU (2 blocos × auth+write), obtido %d", len(fake.calls))
+	}
+}
+
+// Nota sobre cobertura ainda em aberto:
+// - Open()/Close() agora têm cobertura via factory mock (pcsc_test.go).
+// - WriteBlockAlternative, WriteBlockDirectly, WriteTagCFS, testAuthentication,
+//   TestBasicRead, ReadRangeAlternative têm múltiplos caminhos com loops e
+//   fallbacks; testá-los exige sequências longas de APDU que tornam o teste
+//   espelho da implementação. Continuam descobertos por escolha de ROI.
+// - O watcher PC/SC em app.go::tagWatchLoop usa scard.GetStatusChange/
+//   ReaderState diretamente; abstraí-los exigiria nova camada de interfaces
+//   por cima de pcsc.go. Fora do escopo desta rodada.
