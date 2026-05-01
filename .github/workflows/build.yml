@@ -20,15 +20,15 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Set up Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version: ${{ env.GO_VERSION }}
 
     - name: Set up Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: ${{ env.NODE_VERSION }}
 
@@ -62,18 +62,18 @@ jobs:
             name: windows-amd64
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         fetch-tags: true
         fetch-depth: 0
 
     - name: Set up Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version: ${{ env.GO_VERSION }}
 
     - name: Set up Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: ${{ env.NODE_VERSION }}
 
@@ -224,14 +224,14 @@ jobs:
 
     - name: Upload macOS DMG
       if: runner.os == 'macOS'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: cfs-spool-${{ matrix.name }}
         path: build/bin/cfs-spool.dmg
 
     - name: Upload build artifacts
       if: runner.os != 'macOS'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: cfs-spool-${{ matrix.name }}
         path: build/bin/*
@@ -242,7 +242,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         fetch-tags: true
         fetch-depth: 0
@@ -257,7 +257,7 @@ jobs:
         fi
 
     - name: Download all artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         path: artifacts
 
@@ -282,7 +282,7 @@ jobs:
         ls -la release-files/
 
     - name: Create Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v3
       with:
         tag_name: ${{ steps.tag.outputs.name }}
         draft: false
