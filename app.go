@@ -537,12 +537,15 @@ func convertMaterial(material string) string {
 	return material
 }
 
-// convertLength converte comprimento para código hex
+// convertLength converte comprimento para código hex armazenado no tag.
+//
+// Entradas esperadas (todas decimais — a UI nunca passa hex):
+//   - codes do dropdown em decimal: "0083", "0165", "0330", "0660"
+//   - gramaturas pré-definidas: "250", "500", "1000", "2000"
+//   - gramatura custom (qualquer inteiro): convertida via cm = gramas/3, clampado em 65535
+//
+// Fallback: "0053" (250g) para entradas vazias ou não-numéricas.
 func convertLength(length string) string {
-	if len(length) == 4 {
-		return length
-	}
-
 	lengthMap := map[string]string{
 		"0083": "0053", "0165": "00A5", "0330": "014A", "0660": "0294",
 	}

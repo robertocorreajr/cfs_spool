@@ -132,41 +132,35 @@ func TestConvertDateRoundTrip(t *testing.T) {
 	}
 }
 
-// TestConvertLength documenta o comportamento ATUAL de convertLength.
+// TestConvertLength cobre os 4 caminhos de convertLength:
+//   1. lengthMap: codes decimais do dropdown ("0083", "0165", "0330", "0660")
+//   2. gramMap: gramaturas pré-definidas ("250", "500", "1000", "2000")
+//   3. cálculo cm = gramas/3 para gramaturas custom
+//   4. fallback "0053" para entradas vazias/não-numéricas
 //
-// Atenção: a função tem um bug de short-circuit — entradas com 4 chars
-// passam direto SEM consultar o lookup. Isso significa que gramaturas
-// como "1000" e "2000" (que estão no gramMap) nunca alcançam o lookup
-// e são gravadas literalmente como código hex de 4 chars.
-// Bug rastreado na issue #39 — quando corrigida, atualizar os esperados
-// marcados com "(BUG:...)" abaixo.
+// Após o fix da issue #39 a função sempre processa input decimal —
+// não há mais short-circuit para entradas de 4 chars.
 func TestConvertLength(t *testing.T) {
 	testes := []struct {
 		nome     string
 		entrada  string
 		esperado string
 	}{
-		// 4 chars: passa direto (intenção parece ser "já está em formato RFID")
-		{"4 chars passa direto", "0053", "0053"},
-		{"4 chars uppercase", "ABCD", "ABCD"},
-		{"1000g passa direto (BUG: deveria ir pro lookup gramMap)", "1000", "1000"},
-		{"2000g passa direto (BUG: deveria ir pro lookup gramMap)", "2000", "2000"},
-		{"3000g passa direto (BUG: deveria virar 03E8)", "3000", "3000"},
-		{"5000g passa direto (BUG: deveria virar 0682)", "5000", "5000"},
+		// Lookup cm pré-definido (codes do dropdown da UI)
+		{"0083 vira 0053 (250g)", "0083", "0053"},
+		{"0165 vira 00A5 (500g)", "0165", "00A5"},
+		{"0330 vira 014A (1kg)", "0330", "014A"},
+		{"0660 vira 0294 (2kg)", "0660", "0294"},
 
-		// Lookup cm pré-definido (4 chars com prefixo 0)
-		// Nota: "0083", "0165", "0330", "0660" também têm 4 chars, então passam direto.
-		// O lookup lengthMap nunca é alcançado pelo código atual.
-		{"0083 passa direto (4 chars, NAO consulta lengthMap)", "0083", "0083"},
-		{"0165 passa direto (4 chars, NAO consulta lengthMap)", "0165", "0165"},
-		{"0330 passa direto (4 chars, NAO consulta lengthMap)", "0330", "0330"},
-		{"0660 passa direto (4 chars, NAO consulta lengthMap)", "0660", "0660"},
-
-		// Lookup gramas pré-definido (3 chars, alcança gramMap)
+		// Lookup gramas pré-definido
 		{"250g vira 0053", "250", "0053"},
 		{"500g vira 00A5", "500", "00A5"},
+		{"1000g vira 014A", "1000", "014A"},
+		{"2000g vira 0294", "2000", "0294"},
 
-		// Custom: cm = gramas/3 → hex (entradas com 5+ chars)
+		// Custom: cm = gramas/3 → hex
+		{"3000g vira 03E8 (1000cm)", "3000", "03E8"},
+		{"5000g vira 0682 (1666cm trunca)", "5000", "0682"},
 		{"10000g vira 0D05 (3333cm)", "10000", "0D05"},
 		{"15000g vira 1388 (5000cm)", "15000", "1388"},
 
@@ -175,8 +169,9 @@ func TestConvertLength(t *testing.T) {
 		{"196605g (65535*3) bate exato em FFFF", "196605", "FFFF"},
 
 		// Inválidos: fallback "0053"
-		{"vazio fallback (0 chars)", "", "0053"},
-		{"texto invalido fallback (3 chars)", "abc", "0053"},
+		{"vazio fallback", "", "0053"},
+		{"texto invalido fallback", "abc", "0053"},
+		{"hex com letras fallback (Atoi falha)", "ABCD", "0053"},
 	}
 
 	for _, tt := range testes {
