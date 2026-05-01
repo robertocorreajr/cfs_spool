@@ -1,0 +1,34 @@
+#!/bin/sh
+# Hook pre-push: garante compilação + testes antes de enviar.
+#
+# Para ativar este hook localmente, rode uma vez:
+#   make install-hooks
+# (equivale a: git config core.hooksPath .githooks)
+
+set -e
+
+echo "🔍 Verificando compilação Go..."
+if ! go build ./... 2>&1; then
+    echo "❌ Erro na compilação Go. Push cancelado."
+    exit 1
+fi
+
+echo "🔍 Verificando TypeScript..."
+if ! (cd frontend && npx tsc --noEmit 2>&1); then
+    echo "❌ Erro no TypeScript. Push cancelado."
+    exit 1
+fi
+
+echo "🧪 Rodando testes Go..."
+if ! go test ./... 2>&1; then
+    echo "❌ Testes Go falharam. Push cancelado."
+    exit 1
+fi
+
+echo "🧪 Rodando testes do frontend..."
+if ! (cd frontend && npm test --silent 2>&1); then
+    echo "❌ Testes do frontend falharam. Push cancelado."
+    exit 1
+fi
+
+echo "✅ Build + testes OK. Prosseguindo com push."
