@@ -36,6 +36,13 @@ jobs:
       - name: Instalar dependências do frontend
         run: cd frontend && npm ci
 
+      # main.go usa //go:embed all:frontend/dist — sem o build, `go test`
+      # falha em "pattern all:frontend/dist: no matching files found".
+      - name: Garantir frontend/dist (placeholder para go:embed)
+        run: |
+          mkdir -p frontend/dist
+          echo "ci-placeholder" > frontend/dist/.gitkeep
+
       - name: Rodar testes Go
         run: make test
 
