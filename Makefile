@@ -1,7 +1,7 @@
 # CFS Spool Makefile — Wails v2
 VERSION ?= dev
 
-.PHONY: all dev build build-all test clean install-frontend install-wails install-deps-ubuntu install-deps-macos help
+.PHONY: all dev build build-all test test-frontend test-all clean install-frontend install-wails install-hooks install-deps-ubuntu install-deps-macos help
 
 # Default target
 all: build
@@ -21,9 +21,16 @@ build-all:
 	wails build -platform linux/amd64 -ldflags "-X main.version=$(VERSION)"
 	wails build -platform windows/amd64 -ldflags "-X main.version=$(VERSION)"
 
-# Testes
+# Testes (Go)
 test:
 	go test -v ./...
+
+# Testes (frontend)
+test-frontend:
+	cd frontend && npm test
+
+# Roda toda a suíte (Go + frontend)
+test-all: test test-frontend
 
 # Limpar artefatos
 clean:
@@ -36,6 +43,11 @@ install-frontend:
 # Instalar Wails CLI
 install-wails:
 	go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+# Configurar git para usar os hooks versionados em .githooks/
+install-hooks:
+	git config core.hooksPath .githooks
+	@echo "Hooks instalados a partir de .githooks/"
 
 # Dependências do sistema (Ubuntu/Debian)
 install-deps-ubuntu:
@@ -54,8 +66,11 @@ help:
 	@echo "  dev              - Desenvolvimento com hot-reload"
 	@echo "  build            - Build para plataforma atual"
 	@echo "  build-all        - Build para todas as plataformas"
-	@echo "  test             - Executar testes"
+	@echo "  test             - Executar testes Go"
+	@echo "  test-frontend    - Executar testes do frontend (Vitest)"
+	@echo "  test-all         - Executar Go + frontend"
 	@echo "  clean            - Limpar artefatos"
 	@echo "  install-frontend - Instalar dependências do frontend"
 	@echo "  install-wails    - Instalar Wails CLI"
+	@echo "  install-hooks    - Configurar git para usar .githooks/"
 	@echo "  install-deps-*   - Instalar dependências do sistema"
