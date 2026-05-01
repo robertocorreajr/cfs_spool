@@ -81,7 +81,7 @@ func main() {
 			fmt.Printf("Erro ao fazer parse: %v\n", err)
 		} else {
 			fmt.Printf("Lote (fixo): %s\n", fields.Batch)
-			fmt.Printf("Data: %s (%s)\n", fields.Date, fields.FormatDate())
+			fmt.Printf("Data: %s (formato YYMDD)\n", fields.Date)
 			fmt.Printf("Fornecedor: %s (%s)\n", fields.Supplier, fields.GetSupplierName())
 			fmt.Printf("Material: %s (%s)\n", fields.Material, fields.GetMaterialName())
 			fmt.Printf("Cor: %s (%s)\n", fields.Color, fields.FormatColor())

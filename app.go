@@ -169,7 +169,6 @@ func (a *App) GetVersion() string {
 type TagData struct {
 	UID          string `json:"uid"`
 	Date         string `json:"date"`         // YYYY-MM-DD para input date
-	DateDisplay  string `json:"dateDisplay"`   // formato legível pt-BR
 	SupplierCode string `json:"supplierCode"`  // código do vendor UI ("0276", "ESUN", "POLY", "0000")
 	SupplierName string `json:"supplierName"`  // "Creality", "eSUN", "Polymaker", "Genérico"
 	MaterialCode string `json:"materialCode"`  // "04001", "E1001", "P1001"
@@ -266,7 +265,6 @@ func (a *App) ReadTag() (*TagData, error) {
 	return &TagData{
 		UID:          uid,
 		Date:         parseDateToISO(fields.Date),
-		DateDisplay:  fields.FormatDate(),
 		SupplierCode: vendorCode,
 		SupplierName: vendorName(vendorCode),
 		MaterialCode: fields.Material,
