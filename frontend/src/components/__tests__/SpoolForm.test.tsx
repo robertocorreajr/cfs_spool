@@ -107,4 +107,124 @@ describe("SpoolForm", () => {
     });
     expect(toastErrors[0]).toMatch(/Erro ao carregar/);
   });
+
+  it("filtra dígitos não numéricos e trunca em 6 chars no campo Serial", async () => {
+    render(<SpoolForm />);
+    await waitFor(() => expect(mockGetOptions).toHaveBeenCalled());
+
+    const serialInput = screen.getByPlaceholderText("000001") as HTMLInputElement;
+    // Reseta para vazio antes (default é "000001")
+    fireEvent.change(serialInput, { target: { value: "" } });
+    fireEvent.change(serialInput, { target: { value: "abc123def456789" } });
+    expect(serialInput.value).toBe("123456");
+  });
+
+  it("aplica dados de tag normal lida via callback de tag:read", async () => {
+    let tagReadCallback: ((data: unknown) => void) | undefined;
+    mockEventsOn.mockImplementation((event: string, cb) => {
+      if (event === "tag:read") {
+        tagReadCallback = cb as (data: unknown) => void;
+      }
+      return () => {};
+    });
+
+    render(<SpoolForm />);
+    await waitFor(() => expect(mockEventsOn).toHaveBeenCalled());
+    expect(tagReadCallback).toBeDefined();
+
+    tagReadCallback?.({
+      uid: "DEADBEEF",
+      date: "2026-04-12",
+      supplierCode: "ESUN",
+      materialCode: "E1001",
+      color: "FF4010",
+      lengthCode: "0330",
+      serial: "000042",
+      isBlank: false,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("DEADBEEF")).toBeInTheDocument();
+      expect(screen.getByText("#FF4010")).toBeInTheDocument();
+    });
+    // Serial vai para o input controlado.
+    const serialInput = screen.getByPlaceholderText("000001") as HTMLInputElement;
+    expect(serialInput.value).toBe("000042");
+
+    // Toast de sucesso para tag normal.
+    expect(toastSuccesses.some((m) => m.includes("DEADBEEF") && m.includes("Tag lida"))).toBe(true);
+  });
+
+  it("aplica defaults e dispara toast.info quando isBlank=true", async () => {
+    let tagReadCallback: ((data: unknown) => void) | undefined;
+    mockEventsOn.mockImplementation((event: string, cb) => {
+      if (event === "tag:read") {
+        tagReadCallback = cb as (data: unknown) => void;
+      }
+      return () => {};
+    });
+
+    render(<SpoolForm />);
+    await waitFor(() => expect(mockEventsOn).toHaveBeenCalled());
+
+    tagReadCallback?.({
+      uid: "BEEF1234",
+      date: "",
+      supplierCode: "",
+      materialCode: "",
+      color: "",
+      lengthCode: "",
+      serial: "",
+      isBlank: true,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("BEEF1234")).toBeInTheDocument();
+    });
+    // Defaults: supplier "0276", color "000000", length "0330", serial "000001".
+    expect(screen.getByText("#000000")).toBeInTheDocument();
+    const serialInput = screen.getByPlaceholderText("000001") as HTMLInputElement;
+    expect(serialInput.value).toBe("000001");
+
+    // toast.info é roteado para toastSuccesses no nosso mock; cobre tag virgem.
+    expect(toastSuccesses.some((m) => m.includes("BEEF1234") && m.includes("Tag virgem"))).toBe(true);
+  });
+
+  it("muda barra de status quando callback tag:status emite 'read'", async () => {
+    let statusCallback: ((status: string) => void) | undefined;
+    mockEventsOn.mockImplementation((event: string, cb) => {
+      if (event === "tag:status") {
+        statusCallback = cb as (status: string) => void;
+      }
+      return () => {};
+    });
+
+    render(<SpoolForm />);
+    await waitFor(() => expect(mockEventsOn).toHaveBeenCalled());
+
+    expect(screen.getByText(/Aguardando tag/)).toBeInTheDocument();
+
+    statusCallback?.("read");
+    await waitFor(() => {
+      expect(screen.getByText(/Tag detectada automaticamente/)).toBeInTheDocument();
+    });
+  });
+
+  it("exibe barra de erro quando callback tag:status emite 'error'", async () => {
+    let statusCallback: ((status: string) => void) | undefined;
+    mockEventsOn.mockImplementation((event: string, cb) => {
+      if (event === "tag:status") {
+        statusCallback = cb as (status: string) => void;
+      }
+      return () => {};
+    });
+
+    render(<SpoolForm />);
+    await waitFor(() => expect(mockEventsOn).toHaveBeenCalled());
+
+    statusCallback?.("error");
+    await waitFor(() => {
+      expect(screen.getByText(/Erro ao ler tag/)).toBeInTheDocument();
+    });
+  });
 });
