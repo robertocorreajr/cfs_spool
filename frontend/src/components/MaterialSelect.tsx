@@ -5,6 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
+import {
+  clearMaterialIfVendorChanged,
+  filterByVendor,
+  pickAutoSupplier,
+} from "@/lib/materialSelectLogic";
 import type { MaterialOption, VendorOption } from "@/types/spool";
 
 interface MaterialSelectProps {
@@ -22,29 +27,25 @@ export function MaterialSelect({
   const [supplierOpen, setSupplierOpen] = useState(false);
   const [materialOpen, setMaterialOpen] = useState(false);
 
-  const filteredMaterials = materials.filter((m) => m.vendor === supplier);
+  const filteredMaterials = filterByVendor(materials, supplier);
   const selectedVendor = vendors.find((v) => v.code === supplier);
   const selectedMaterial = materials.find((m) => m.code === material);
 
   const handleMaterialChange = (code: string) => {
     onMaterialChange(code);
     setMaterialOpen(false);
-    // Auto-selecionar fornecedor baseado no vendor do material
-    const mat = materials.find((m) => m.code === code);
-    if (mat) {
-      onSupplierChange(mat.vendor);
+    const auto = pickAutoSupplier(materials, code);
+    if (auto !== undefined) {
+      onSupplierChange(auto);
     }
   };
 
   const handleSupplierChange = (code: string) => {
     onSupplierChange(code);
     setSupplierOpen(false);
-    // Limpar material se não pertencer ao novo fornecedor
-    if (material) {
-      const mat = materials.find((m) => m.code === material);
-      if (mat && mat.vendor !== code) {
-        onMaterialChange("");
-      }
+    const next = clearMaterialIfVendorChanged(material, materials, code);
+    if (next !== material) {
+      onMaterialChange(next);
     }
   };
 
