@@ -46,6 +46,27 @@ make install-deps-macos    # brew install pcsc-lite
 make install-deps-ubuntu   # apt install pcscd libpcsclite-dev libgtk-3-dev libwebkit2gtk-4.1-dev
 ```
 
+## Layers
+
+Declaração das camadas usadas pelos agentes da fábrica de software (`backend-builder`, `frontend-builder`, `test-verifier`). Cada agente respeita estes globs como escopo de escrita.
+
+```yaml
+backend:
+  - "*.go"                  # app.go, app_options.go, main.go na raiz
+  - "internal/**"           # rfid, creality, etc.
+  - "tests/**/*.go"         # testes de hardware/diagnóstico
+  - "go.mod"
+  - "go.sum"
+frontend:
+  - "frontend/**"           # React + TypeScript + shadcn/ui
+shared:
+  - "wails.json"            # configuração do bridge — alterar com cuidado
+```
+
+Convenções:
+- Backend e frontend conversam via **Wails bindings** (não há HTTP). O `backend-builder` deve descrever cada binding novo no formato "Binding NomeDoMetodo(args) -> ReturnType", e o `frontend-builder` consome via `wailsjs/go/main/App`.
+- Arquivos fora destes globs (`.github/`, `docs/`, `CHANGELOG.md`, `Makefile`, etc.) **não** pertencem a nenhum builder — alterações ali devem ser feitas pelo orquestrador ou pelo humano.
+
 ## Architecture
 
 ### Stack
