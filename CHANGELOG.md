@@ -9,7 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Full Creality Print v7 material catalog: 18 new entries covering Generic PA-GF/PP-GF, eight eSUN materials (including eSUN PLA-Basic, PLA+HS, PLA-LW, PETG-CF, ABS-CF, ABS+HS, TPU-95A), and nine Polymaker Fiberon engineering filaments.
+- Developer CLI `cmd/check-materials` to diff the bundled material list against the Creality Print v7 `materialList.json` and flag missing, stale, or mismatched entries.
+
 ### Changed
+
+- Material dropdown is now sorted alphabetically by name across all vendors.
+- Corrected material code `00035`: previously mislabeled as "eSUN PLA-LW", now correctly identified as "Generic PLA-LW" (vendor: Generic). The real eSUN PLA-LW is now code `E1008`. Tags written by previous versions with code `00035` will display "Generic PLA-LW" after this update.
 
 ### Deprecated
 

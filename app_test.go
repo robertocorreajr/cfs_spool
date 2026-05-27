@@ -201,6 +201,10 @@ func TestConvertMaterial(t *testing.T) {
 		{"PolySonic PLA", "PolySonic PLA", "P1004"},
 		{"desconhecido passa direto", "Material X", "Material X"},
 		{"vazio passa direto", "", ""},
+		// Entradas da expansão do catálogo v7
+		{"eSUN PLA-Basic novo E1009", "eSUN PLA-Basic", "E1009"},
+		{"Fiberon PA6-CF20 novo P7003", "Fiberon PA6-CF20", "P7003"},
+		{"Generic PLA-LW corrigido 00035", "Generic PLA-LW", "00035"},
 	}
 
 	for _, tt := range testes {

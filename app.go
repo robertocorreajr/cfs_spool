@@ -631,8 +631,9 @@ func convertMaterial(material string) string {
 		"PA12-CF": "00025", "TPU 64D": "00026", "PETG-GF": "00027",
 		"PP-CF": "00031", "PCTG": "00032", "ASA-CF": "00033", "PA6-GF": "00034",
 		// Creality
-		"Hyper PLA": "01001", "Hyper L-W PLA": "01002", "Hyper Stardust": "01004",
-		"Soleyin Ultra PLA": "01601",
+		"Hyper PLA": "01001", "Hyper L-W PLA": "01002", "Hyper Luminous": "01003",
+		"Hyper Stardust": "01004", "Soleyin Ultra PLA": "01601",
+		"Soleyin Basic PETG": "06005",
 		"Hyper PLA-CF": "02001", "Hyper ABS": "03001",
 		"CR-PLA": "04001", "CR-Silk": "05001", "CR-PETG": "06001",
 		"Hyper PETG": "06002", "Hyper PETG-CF": "06003", "Hyper PETG-GF": "06004",
@@ -645,14 +646,29 @@ func convertMaterial(material string) string {
 		"CR-TPU": "16001", "CR-Wood": "17001", "HP Ultra PLA": "18001",
 		"HP-ASA": "19001", "Hyper Marble": "29001",
 		// eSUN
-		"eSUN PLA-LW": "00035", "eSUN PLA+": "E1001", "eSUN PLA-Silk": "E1002",
+		"Generic PLA-LW": "00035", "eSUN PLA+": "E1001", "eSUN PLA-Silk": "E1002",
 		"eSUN PLA-Matte": "E1003", "eSUN PLA-Lite": "E1004", "eSUN PLA-CF": "E1005",
-		"eSUN PLA-HS": "E1006", "eSUN PETG": "E2001", "eSUN PETG+HS": "E2002",
+		"eSUN PLA-HS": "E1006", "eSUN PLA+HS": "E1007", "eSUN PLA-LW": "E1008",
+		"eSUN PLA-Basic": "E1009", "eSUN PETG": "E2001", "eSUN PETG+HS": "E2002",
+		"eSUN PETG-Basic": "E2003", "eSUN PETG-CF": "E2004",
+		"eSUN ABS+": "E3001", "eSUN ABS-CF": "E3002", "eSUN ABS+HS": "E3003",
+		"eSUN ASA+": "E4001", "eSUN TPU-95A": "E5001",
+		"eSUN PET-Basic": "E8001",
 		// Polymaker
 		"Panchroma PLA Satin": "P1001", "PolySonic PLA Pro": "P1002",
 		"Panchroma PLA Matte": "P1003", "PolySonic PLA": "P1004",
+		"Fiberon PETG-ESD": "P2001", "Fiberon PETG-rCF08": "P2002",
+		"Fiberon PA6-GF25": "P7001", "Fiberon PA612-CF15": "P7002",
+		"Fiberon PA6-CF20": "P7003", "Fiberon PA12-CF10": "P7004",
+		"Fiberon PA612-ESD": "P7005", "Fiberon PET-CF17": "P8001",
+		"Fiberon PPS-CF10": "P9001",
+		// Generic
+		"Generic PA-GF": "00028", "Generic PP-GF": "00030",
 	}
 
+	// TODO(dívida técnica): fallback silencioso — entradas desconhecidas passam como-estão.
+	// Isso pode gravar dados inválidos no tag se o frontend enviar um nome não mapeado.
+	// Rastrear em issue para tornar erro explícito em versão futura.
 	if code, ok := materialMap[material]; ok {
 		return code
 	}

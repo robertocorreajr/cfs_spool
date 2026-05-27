@@ -77,6 +77,10 @@ func TestGetMaterialName(t *testing.T) {
 		{"codigo desconhecido", "ZZZZZ", "ZZZZZ (desconhecido)"},
 		{"vazio", "", " (desconhecido)"},
 		{"codigo num intervalo nao mapeado", "99999", "99999 (desconhecido)"},
+		// Entradas da expansão do catálogo v7
+		{"eSUN PLA-Basic E1009", "E1009", "eSUN PLA-Basic"},
+		{"Fiberon PA6-CF20 P7003", "P7003", "Fiberon PA6-CF20"},
+		{"Generic PLA-LW corrigido 00035", "00035", "Generic PLA-LW"},
 	}
 
 	for _, tt := range testes {
@@ -286,5 +290,40 @@ func TestLengthRoundTripCripto(t *testing.T) {
 				t.Errorf("gramas apos round-trip = %d, esperado %d", gramas, tt.esperado)
 			}
 		})
+	}
+}
+
+// TestRoundTripMaterialE1009 valida o ciclo completo encode→decode para o material
+// E1009 (eSUN PLA-Basic), garantindo que ASCIIConcat + ParseFieldsCompat preservam
+// o código do material e que GetMaterialName retorna o nome correto.
+func TestRoundTripMaterialE1009(t *testing.T) {
+	f := Fields{
+		Batch:    "A2",
+		Date:     "10524",
+		Supplier: "0276",
+		Material: "E1009",
+		Color:    "0FF4010",
+		Length:   "0330",
+		Serial:   "000001",
+		Reserve:  "0000",
+	}
+
+	ascii, err := f.ASCIIConcat()
+	if err != nil {
+		t.Fatalf("ASCIIConcat falhou: %v", err)
+	}
+
+	parsed, err := ParseFieldsCompat(ascii)
+	if err != nil {
+		t.Fatalf("ParseFieldsCompat falhou: %v", err)
+	}
+
+	if parsed.Material != "E1009" {
+		t.Errorf("Material apos round-trip = %q, esperado %q", parsed.Material, "E1009")
+	}
+
+	nome := parsed.GetMaterialName()
+	if nome != "eSUN PLA-Basic" {
+		t.Errorf("GetMaterialName() = %q, esperado %q", nome, "eSUN PLA-Basic")
 	}
 }
