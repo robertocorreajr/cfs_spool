@@ -9,13 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Full Creality Print v7 material catalog: 18 new entries covering Generic PA-GF/PP-GF, eight eSUN materials (including eSUN PLA-Basic, PLA+HS, PLA-LW, PETG-CF, ABS-CF, ABS+HS, TPU-95A), and nine Polymaker Fiberon engineering filaments.
-- Developer CLI `cmd/check-materials` to diff the bundled material list against the Creality Print v7 `materialList.json` and flag missing, stale, or mismatched entries.
-
 ### Changed
-
-- Material dropdown is now sorted alphabetically by name across all vendors.
-- Corrected material code `00035`: previously mislabeled as "eSUN PLA-LW", now correctly identified as "Generic PLA-LW" (vendor: Generic). The real eSUN PLA-LW is now code `E1008`. Tags written by previous versions with code `00035` will display "Generic PLA-LW" after this update.
 
 ### Deprecated
 
@@ -24,6 +18,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 ### Security
+
+## [3.1.1] - 2026-05-27
+
+### Added
+
+- Full Creality Print v7 material catalog: 18 new entries covering Generic PA-GF/PP-GF, eight eSUN materials (including eSUN PLA-Basic, PLA+HS, PLA-LW, PETG-CF, ABS-CF, ABS+HS, TPU-95A), and nine Polymaker Fiberon engineering filaments.
+- Developer CLI `cmd/check-materials` to diff the bundled material list against the Creality Print v7 `materialList.json` and flag missing, stale, or mismatched entries.
+
+### Changed
+
+- Material dropdown is now sorted alphabetically by name across all vendors.
+- Corrected material code `00035`: previously mislabeled as "eSUN PLA-LW", now correctly identified as "Generic PLA-LW" (vendor: Generic). The real eSUN PLA-LW is now code `E1008`. Tags written by previous versions with code `00035` will display "Generic PLA-LW" after this update.
 
 ## [3.1.0] - 2026-05-01
 
@@ -62,7 +68,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `scard.Context` lifecycle for Open/Close paths is now created through a mockable factory, simplifying tests that need to simulate PC/SC errors without hardware.
 
-[Unreleased]: https://github.com/robertocorreajr/cfs_spool/compare/v3.1.0...HEAD
+[Unreleased]: https://github.com/robertocorreajr/cfs_spool/compare/v3.1.1...HEAD
+[3.1.1]: https://github.com/robertocorreajr/cfs_spool/compare/v3.1.0...v3.1.1
 [3.1.0]: https://github.com/robertocorreajr/cfs_spool/compare/v3.0.10...v3.1.0
 [3.0.10]: https://github.com/robertocorreajr/cfs_spool/compare/v3.0.9...v3.0.10
 [3.0.9]: https://github.com/robertocorreajr/cfs_spool/compare/v3.0.8...v3.0.9
